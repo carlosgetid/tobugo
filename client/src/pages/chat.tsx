@@ -60,8 +60,39 @@ export default function Chat() {
       const response = await apiRequest("POST", "/api/ai/generate-itinerary", preferences);
       return response.json();
     },
-    onSuccess: (itinerary) => {
+    onSuccess: (itinerary, preferences) => {
       setGeneratedItinerary(itinerary);
+      // Save the itinerary as a trip to the database
+      saveTripMutation.mutate({ itinerary, preferences });
+    },
+  });
+
+  // Save trip mutation
+  const saveTripMutation = useMutation({
+    mutationFn: async ({ itinerary, preferences }: { itinerary: any, preferences: any }) => {
+      const tripData = {
+        userId: "temp-user", // TODO: Replace with actual user ID from auth
+        title: `Viaje a ${preferences.destination}`,
+        destination: preferences.destination,
+        startDate: preferences.startDate,
+        endDate: preferences.endDate,
+        budget: preferences.budget || itinerary.totalCost,
+        preferences: {
+          accommodation: preferences.accommodationType,
+          activities: preferences.activities,
+          travelStyle: preferences.travelStyle,
+          dietaryRestrictions: preferences.dietaryRestrictions
+        },
+        itinerary: itinerary,
+        isPublic: false // Default to private, user can change later
+      };
+      
+      const response = await apiRequest("POST", "/api/trips", tripData);
+      return response.json();
+    },
+    onSuccess: (savedTrip) => {
+      console.log("Trip saved successfully:", savedTrip.id);
+      queryClient.invalidateQueries({ queryKey: ['/api/trips/public'] });
     },
   });
 
