@@ -202,8 +202,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const preferencesSchema = z.object({
         destination: z.string(),
-        startDate: z.string(),
-        endDate: z.string(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        duration: z.union([z.number(), z.string()]).optional().transform((val) => {
+          if (typeof val === 'string') {
+            const match = String(val).match(/\d+/);
+            return match ? parseInt(match[0], 10) : undefined;
+          }
+          return val;
+        }),
+        days: z.union([z.number(), z.string()]).optional().transform((val) => {
+          if (typeof val === 'string') {
+            const match = String(val).match(/\d+/);
+            return match ? parseInt(match[0], 10) : undefined;
+          }
+          return val;
+        }),
         budget: z.union([z.number(), z.string()]).optional().transform((val) => {
           if (typeof val === 'string') {
             // Extract numbers from strings like "$1,000 - $1,500 USD" or "$1500"
@@ -239,8 +253,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }),
       });
 
-      const preferences = preferencesSchema.parse(req.body);
-      const itinerary = await generateItinerary(preferences);
+      const parsedPreferences = preferencesSchema.parse(req.body);
+      
+      // Smart date calculation preserving provided dates
+      let startDate = parsedPreferences.startDate;
+      let endDate = parsedPreferences.endDate;
+      const duration = parsedPreferences.duration || parsedPreferences.days || 7;
+      
+      if (!startDate && !endDate) {
+        // No dates provided - generate defaults
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(today.getDate() + 7); // Start 7 days from now
+        
+        const end = new Date(start);
+        end.setDate(start.getDate() + duration - 1);
+        
+        startDate = start.toISOString().split('T')[0];
+        endDate = end.toISOString().split('T')[0];
+      } else if (startDate && !endDate) {
+        // Start date provided, calculate end date
+        const start = new Date(startDate);
+        if (isNaN(start.getTime())) {
+          throw new Error("Invalid start date format");
+        }
+        const end = new Date(start);
+        end.setDate(start.getDate() + duration - 1);
+        endDate = end.toISOString().split('T')[0];
+      } else if (!startDate && endDate) {
+        // End date provided, calculate start date
+        const end = new Date(endDate);
+        if (isNaN(end.getTime())) {
+          throw new Error("Invalid end date format");
+        }
+        const start = new Date(end);
+        start.setDate(end.getDate() - duration + 1);
+        startDate = start.toISOString().split('T')[0];
+      }
+      // If both dates provided, use them as-is
+      
+      // Validate that we have valid dates
+      if (!startDate || !endDate) {
+        throw new Error("Unable to determine trip dates");
+      }
+      
+      // Ensure dates are strings (TypeScript safety)
+      const finalPreferences = {
+        ...parsedPreferences,
+        startDate,
+        endDate
+      };
+      
+      const itinerary = await generateItinerary(finalPreferences);
       
       res.json(itinerary);
     } catch (error: any) {
