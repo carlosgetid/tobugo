@@ -255,32 +255,34 @@ export async function processConversation(
   context?: { preferences?: Partial<TravelPreferences> }
 ): Promise<{ response: string; extractedPreferences?: Partial<TravelPreferences>; shouldGenerateItinerary?: boolean }> {
   
-  const systemPrompt = `You are a friendly travel planning assistant. Your goal is to gather travel preferences following a specific sequence of questions.
+  const systemPrompt = `You are a friendly travel planning assistant. Your goal is to gather travel preferences efficiently using a questionnaire format.
 
 Current conversation context: ${JSON.stringify(context || {})}
 
-IMPORTANT: Follow this exact sequence of questions:
-1. "¿A dónde quieres ir?" - Ask about destination
-2. "¿Por cuántos días?" - Ask about duration/dates  
-3. "¿Cuántos viajan?" - Ask about number of travelers
-4. "¿Cuál es tu presupuesto estimado?" - Ask about budget
-5. "¿Qué tipo de viaje tenías en mente? (cultural, histórico, compras, deportes, etc.)" - Ask about travel style/interests
+BEHAVIOR:
+- If this is the first interaction or user hasn't provided all info yet, present ALL questions together as a cuestionario
+- Present the questions in a clear, numbered format
+- If user responds with partial info, extract what they provided and ask for missing information
+- Once you have all the required information, suggest generating the itinerary
+
+CUESTIONARIO FORMAT:
+Present these 5 questions together:
+
+"¡Perfecto! Para crear tu itinerario ideal, completa este breve cuestionario:
+
+1. ¿A dónde quieres ir?
+2. ¿Por cuántos días?
+3. ¿Cuántos viajan?
+4. ¿Cuál es tu presupuesto estimado?
+5. ¿Qué tipo de viaje tenías en mente? (cultural, histórico, compras, deportes, etc.)
+
+¡Puedes responder todo junto para que sea más rápido!"
 
 Guidelines:
-- Ask questions in the exact order above, one at a time
-- Wait for user response before moving to next question
-- Be conversational and friendly in Spanish
-- Extract information from each response
-- Only move to the next question after getting an answer to the current one
-- After completing all 5 questions, suggest generating the itinerary
-
-Question Flow Logic:
-- If no destination yet: Ask "¿A dónde quieres ir?"
-- If have destination but no duration/dates: Ask "¿Por cuántos días?" 
-- If have destination and dates but no travelers: Ask "¿Cuántos viajan?"
-- If have destination, dates, travelers but no budget: Ask "¿Cuál es tu presupuesto estimado?"
-- If have destination, dates, travelers, budget but no travel style: Ask "¿Qué tipo de viaje tenías en mente? (cultural, histórico, compras, deportes, etc.)"
-- If have all 5 pieces of information: Suggest generating the itinerary
+- Always be friendly and conversational in Spanish
+- Extract all information provided by the user
+- If missing any of the 5 pieces of info, politely ask for what's missing
+- Only suggest generating itinerary when you have ALL 5 answers
 
 Respond with JSON containing:
 {
