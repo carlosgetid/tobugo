@@ -41,6 +41,100 @@ export interface TravelItinerary {
   };
 }
 
+// Helper function to extract JSON from AI response
+function extractJsonString(text: string): string {
+  // Remove markdown code fences if present
+  const cleanedText = text.replace(/```json\s*|\s*```/g, '').trim();
+  return cleanedText;
+}
+
+// Helper function to compute missing fields in itinerary
+function normalizeItinerary(data: any, preferences: TravelPreferences): TravelItinerary {
+  // Handle wrapped response (e.g., { itinerary: ... })
+  let itinerary = data.itinerary ?? data;
+  
+  // Ensure we have days array
+  if (!itinerary.days || !Array.isArray(itinerary.days) || itinerary.days.length === 0) {
+    throw new Error('Invalid itinerary: missing days array');
+  }
+
+  // Normalize each day
+  itinerary.days = itinerary.days.map((day: any, index: number) => {
+    // Ensure activities array exists
+    if (!day.activities || !Array.isArray(day.activities)) {
+      day.activities = [];
+    }
+
+    // Normalize activities and compute day total if missing
+    day.activities = day.activities.map((activity: any) => ({
+      time: activity.time || '09:00',
+      title: activity.title || 'Activity',
+      description: activity.description || '',
+      type: activity.type || 'activity',
+      cost: typeof activity.cost === 'number' ? activity.cost : (parseFloat(activity.cost) || 0),
+      location: activity.location || '',
+    }));
+
+    // Calculate day total cost if missing
+    if (typeof day.totalCost !== 'number') {
+      day.totalCost = day.activities.reduce((sum: number, activity: any) => sum + (activity.cost || 0), 0);
+    }
+
+    // Ensure date format
+    if (!day.date) {
+      const startDate = new Date(preferences.startDate);
+      startDate.setDate(startDate.getDate() + index);
+      day.date = startDate.toISOString().split('T')[0];
+    }
+
+    return day;
+  });
+
+  // Calculate cost breakdown if missing
+  if (!itinerary.costBreakdown) {
+    const breakdown = {
+      flights: 0,
+      accommodation: 0,
+      activities: 0,
+      meals: 0,
+      transport: 0,
+    };
+
+    itinerary.days.forEach((day: any) => {
+      day.activities.forEach((activity: any) => {
+        const cost = activity.cost || 0;
+        switch (activity.type) {
+          case 'flight':
+            breakdown.flights += cost;
+            break;
+          case 'accommodation':
+            breakdown.accommodation += cost;
+            break;
+          case 'meal':
+            breakdown.meals += cost;
+            break;
+          case 'transport':
+            breakdown.transport += cost;
+            break;
+          case 'activity':
+          default:
+            breakdown.activities += cost;
+            break;
+        }
+      });
+    });
+
+    itinerary.costBreakdown = breakdown;
+  }
+
+  // Calculate total cost if missing
+  if (typeof itinerary.totalCost !== 'number') {
+    itinerary.totalCost = itinerary.days.reduce((sum: number, day: any) => sum + (day.totalCost || 0), 0);
+  }
+
+  return itinerary as TravelItinerary;
+}
+
 export async function generateItinerary(preferences: TravelPreferences): Promise<TravelItinerary> {
   const systemPrompt = `You are a professional travel planner AI. Create detailed, realistic travel itineraries with accurate cost estimates.
 
@@ -52,7 +146,35 @@ Key requirements:
 - Include accommodation, meals, transport, and activities
 - Provide a comprehensive cost breakdown
 
-Response format must be valid JSON matching the TravelItinerary interface.`;
+IMPORTANT: Return ONLY a JSON object with this exact structure:
+{
+  "days": [
+    {
+      "date": "YYYY-MM-DD",
+      "activities": [
+        {
+          "time": "HH:MM",
+          "title": "Activity name",
+          "description": "Activity description",
+          "type": "flight|accommodation|activity|transport|meal",
+          "cost": 100,
+          "location": "Location name"
+        }
+      ],
+      "totalCost": 500
+    }
+  ],
+  "totalCost": 1500,
+  "costBreakdown": {
+    "flights": 600,
+    "accommodation": 400,
+    "activities": 300,
+    "meals": 150,
+    "transport": 50
+  }
+}
+
+Do NOT include markdown code fences or any wrapper objects. Return only the JSON.`;
 
   const userPrompt = `Create a travel itinerary for:
 - Destination: ${preferences.destination}
@@ -66,32 +188,65 @@ Response format must be valid JSON matching the TravelItinerary interface.`;
 
 Include flights, accommodation, daily activities, meals, and local transport with realistic pricing.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-      },
-      contents: userPrompt,
-    });
+  let lastError;
+  
+  // Retry up to 3 times with exponential backoff for transient errors
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+        },
+        contents: userPrompt,
+      });
 
-    const rawJson = response.text;
-    if (!rawJson) {
-      throw new Error("Empty response from Gemini AI");
+      // Handle response text (could be function or property)
+      const text = typeof response.text === 'function' ? await response.text() : response.text;
+      if (!text) {
+        throw new Error("Empty response from Gemini AI");
+      }
+
+      // Extract and clean JSON string
+      const jsonStr = extractJsonString(text);
+      console.log("Raw AI response:", jsonStr.substring(0, 500) + "..."); // Debug log (truncated)
+      
+      // Parse and normalize the response
+      const rawData = JSON.parse(jsonStr);
+      const itinerary = normalizeItinerary(rawData, preferences);
+
+      return itinerary;
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Error generating itinerary (attempt ${attempt}):`, error);
+      
+      // Check if it's a retryable error (503, 429, network issues)
+      if (attempt < 3 && (
+        error.message?.includes('503') || 
+        error.message?.includes('overloaded') || 
+        error.message?.includes('429') ||
+        error.message?.includes('UNAVAILABLE')
+      )) {
+        // Wait with exponential backoff (2^attempt seconds)
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // For non-retryable errors, throw immediately
+      break;
     }
-
-    const itinerary: TravelItinerary = JSON.parse(rawJson);
-    
-    // Validate the response structure
-    if (!itinerary.days || !itinerary.costBreakdown) {
-      throw new Error("Invalid itinerary structure from AI");
-    }
-
-    return itinerary;
-  } catch (error) {
-    console.error("Error generating itinerary:", error);
-    throw new Error(`Failed to generate itinerary: ${error}`);
+  }
+  
+  // If we get here, all retries failed
+  if (lastError?.message?.includes('503') || lastError?.message?.includes('overloaded')) {
+    throw new Error('The AI service is temporarily overloaded. Please try again in a few moments.');
+  } else if (lastError?.message?.includes('429')) {
+    throw new Error('Too many requests. Please wait a moment and try again.');
+  } else {
+    throw new Error(`Failed to generate itinerary: ${lastError?.message || lastError}`);
   }
 }
 
@@ -125,9 +280,21 @@ Key information to gather:
 Respond with JSON containing:
 {
   "response": "your conversational response",
-  "extractedPreferences": { /* any new preferences extracted */ },
+  "extractedPreferences": {
+    "destination": "string (city/country name)",
+    "startDate": "YYYY-MM-DD format", 
+    "endDate": "YYYY-MM-DD format",
+    "budget": "number (in USD) or string like '$1500'",
+    "travelers": "number of people",
+    "accommodationType": "string description", 
+    "activities": "array of activity strings",
+    "travelStyle": "string description",
+    "dietaryRestrictions": "array of restriction strings"
+  },
   "shouldGenerateItinerary": boolean
-}`;
+}
+
+IMPORTANT: Only include extractedPreferences fields that were mentioned or can be inferred from the conversation. Use proper date format (YYYY-MM-DD) for startDate and endDate.`;
 
   try {
     const conversationHistory = messages.map(msg => 

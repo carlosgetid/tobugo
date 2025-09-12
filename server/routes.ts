@@ -169,6 +169,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages.map(m => ({ role: m.role, content: m.content }))
       );
 
+      console.log("AI Response:", JSON.stringify(aiResponse, null, 2));
+
       const aiMessage = {
         id: Math.random().toString(36),
         role: 'assistant' as const,
@@ -182,6 +184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages,
         status: aiResponse.shouldGenerateItinerary ? 'completed' : 'active'
       });
+
+      console.log("Extracted preferences:", JSON.stringify(aiResponse.extractedPreferences, null, 2));
 
       res.json({
         session: updatedSession,
@@ -200,12 +204,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         destination: z.string(),
         startDate: z.string(),
         endDate: z.string(),
-        budget: z.number().optional(),
-        travelers: z.number().optional(),
+        budget: z.union([z.number(), z.string()]).optional().transform((val) => {
+          if (typeof val === 'string') {
+            // Extract numbers from strings like "$1,000 - $1,500 USD" or "$1500"
+            const numbers = val.match(/\d+(?:,\d+)*/g);
+            if (numbers) {
+              const numericValue = parseInt(numbers[0].replace(/,/g, ''), 10);
+              return isNaN(numericValue) ? undefined : numericValue;
+            }
+            return undefined;
+          }
+          return val;
+        }),
+        travelers: z.union([z.number(), z.string()]).optional().transform((val) => {
+          if (typeof val === 'string') {
+            const num = parseInt(val, 10);
+            return isNaN(num) ? 1 : num;
+          }
+          return val || 1;
+        }),
         accommodationType: z.string().optional(),
-        activities: z.array(z.string()).optional(),
+        activities: z.union([z.array(z.string()), z.string()]).optional().transform((val) => {
+          if (typeof val === 'string') {
+            return [val];
+          }
+          return val;
+        }),
         travelStyle: z.string().optional(),
-        dietaryRestrictions: z.array(z.string()).optional(),
+        dietaryRestrictions: z.union([z.array(z.string()), z.string()]).optional().transform((val) => {
+          if (typeof val === 'string') {
+            return [val];
+          }
+          return val;
+        }),
       });
 
       const preferences = preferencesSchema.parse(req.body);
@@ -213,7 +244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(itinerary);
     } catch (error) {
-      res.status(400).json({ message: "Failed to generate itinerary", error });
+      console.error("Itinerary generation error:", error);
+      res.status(400).json({ message: "Failed to generate itinerary", error: error.message });
     }
   });
 
