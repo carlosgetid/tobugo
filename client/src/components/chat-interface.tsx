@@ -75,7 +75,7 @@ export default function ChatInterface({ session, onSendMessage, isLoading }: Cha
                     : 'chat-bubble-ai'
                 }`}
               >
-                <p className="text-sm" data-testid={`text-message-content-${message.id}`}>
+                <p className="text-sm whitespace-pre-line" data-testid={`text-message-content-${message.id}`}>
                   {message.content}
                 </p>
               </div>
