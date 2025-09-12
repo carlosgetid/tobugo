@@ -138,13 +138,13 @@ export const generatePDF = async (itinerary: ItineraryData): Promise<void> => {
   }
 
   // Footer
-  const totalPages = doc.internal.getNumberOfPages();
+  const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      `Generado por Oneway - Página ${i} de ${totalPages}`,
+      `Generado por TobuGo - Página ${i} de ${totalPages}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: 'center' }

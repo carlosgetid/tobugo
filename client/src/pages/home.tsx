@@ -34,7 +34,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4" data-testid="text-features-title">
-              ¿Por qué elegir Oneway?
+              ¿Por qué elegir TobuGo?
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto" data-testid="text-features-subtitle">
               Nuestra plataforma combina inteligencia artificial avanzada con la sabiduría de viajeros experimentados
@@ -86,7 +86,7 @@ export default function Home() {
             ¿Listo para tu próxima aventura?
           </h2>
           <p className="text-muted-foreground text-lg mb-8" data-testid="text-cta-subtitle">
-            Únete a miles de viajeros que ya han planificado sus viajes perfectos con Oneway
+            Únete a miles de viajeros que ya han planificado sus viajes perfectos con TobuGo
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/chat">
@@ -110,7 +110,7 @@ export default function Home() {
             <div className="col-span-1">
               <div className="flex items-center space-x-2 mb-4">
                 <Plane className="text-2xl text-primary" />
-                <span className="text-xl font-bold">Oneway</span>
+                <span className="text-xl font-bold">TobuGo</span>
               </div>
               <p className="text-muted-foreground text-sm" data-testid="text-footer-description">
                 Planifica viajes perfectos con inteligencia artificial y conecta con otros viajeros.
@@ -160,7 +160,7 @@ export default function Home() {
           </div>
           
           <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p data-testid="text-footer-copyright">&copy; 2024 Oneway. Todos los derechos reservados.</p>
+            <p data-testid="text-footer-copyright">&copy; 2024 TobuGo. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

@@ -1,8 +1,8 @@
-# Oneway Travel Planner
+# TobuGo Travel Planner
 
 ## Overview
 
-Oneway is an AI-powered travel planning platform that helps users create personalized itineraries, discover travel destinations, and connect with a community of travelers. The application combines conversational AI capabilities with comprehensive trip planning features, allowing users to generate detailed travel itineraries through natural language interactions. The platform also includes a community aspect where users can share and discover public travel itineraries created by other travelers.
+TobuGo is an AI-powered travel planning platform that helps users create personalized itineraries, discover travel destinations, and connect with a community of travelers. The application combines conversational AI capabilities with comprehensive trip planning features, allowing users to generate detailed travel itineraries through natural language interactions. The platform also includes a community aspect where users can share and discover public travel itineraries created by other travelers.
 
 ## User Preferences
 
