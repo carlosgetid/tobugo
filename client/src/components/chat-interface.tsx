@@ -44,7 +44,7 @@ export default function ChatInterface({ session, onSendMessage, isLoading }: Cha
     {
       id: "initial",
       role: "assistant" as const,
-      content: "¡Hola! Soy tu asistente de viajes. ¿A dónde te gustaría viajar?",
+      content: "¡Hola! Soy tu asistente de viajes TobuGo. Para crear tu itinerario perfecto, necesito que respondas estas preguntas:\n\n• ¿A dónde quieres ir?\n• ¿Cuáles son las fechas de tu viaje? (o número de días)\n• ¿Cuántos viajan?\n• ¿Cuál es tu presupuesto estimado?\n\n¡Puedes responder todo junto!",
       timestamp: new Date().toISOString()
     }
   ] : messages;
