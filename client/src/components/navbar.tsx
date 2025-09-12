@@ -15,7 +15,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center space-x-2" data-testid="link-home">
             <Plane className="text-2xl text-primary" />
-            <span className="text-xl font-bold text-foreground">Oneway</span>
+            <span className="text-xl font-bold text-foreground">TobuGo</span>
           </Link>
           
           <div className="hidden md:flex items-center space-x-8">
