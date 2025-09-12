@@ -337,7 +337,35 @@ Modify the itinerary according to the user's requests while maintaining:
 - Logical flow between activities
 - Comprehensive cost tracking
 
-Return the updated itinerary in the same JSON format.`;
+IMPORTANT: Return ONLY a JSON object with this exact structure:
+{
+  "days": [
+    {
+      "date": "YYYY-MM-DD",
+      "activities": [
+        {
+          "time": "HH:MM",
+          "title": "Activity name",
+          "description": "Activity description", 
+          "type": "flight|accommodation|activity|transport|meal",
+          "cost": 100,
+          "location": "Location name"
+        }
+      ],
+      "totalCost": 500
+    }
+  ],
+  "totalCost": 1500,
+  "costBreakdown": {
+    "flights": 600,
+    "accommodation": 400,
+    "activities": 300,
+    "meals": 150,
+    "transport": 50
+  }
+}
+
+Do NOT include markdown code fences or any wrapper objects. Return only the JSON.`;
 
   const userPrompt = `Current itinerary: ${JSON.stringify(currentItinerary)}
 
@@ -345,24 +373,72 @@ User feedback: ${userFeedback}
 
 Please modify the itinerary according to this feedback.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-      },
-      contents: userPrompt,
-    });
+  // Create a dummy preferences object for normalization 
+  const preferences = {
+    startDate: currentItinerary.days[0]?.date || new Date().toISOString().split('T')[0],
+    endDate: currentItinerary.days[currentItinerary.days.length - 1]?.date || new Date().toISOString().split('T')[0],
+    destination: "Unknown",
+    budget: currentItinerary.totalCost
+  };
 
-    const rawJson = response.text;
-    if (!rawJson) {
-      throw new Error("Empty response from Gemini AI");
+  let lastError;
+  
+  // Retry up to 3 times with exponential backoff for transient errors
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+        },
+        contents: userPrompt,
+      });
+
+      // Handle response text (could be function or property)
+      const text = typeof response.text === 'function' ? await response.text() : response.text;
+      if (!text) {
+        throw new Error("Empty response from Gemini AI");
+      }
+
+      // Extract and clean JSON string
+      const jsonStr = extractJsonString(text);
+      console.log("Raw AI optimization response:", jsonStr.substring(0, 500) + "..."); // Debug log (truncated)
+      
+      // Parse and normalize the response
+      const rawData = JSON.parse(jsonStr);
+      const optimizedItinerary = normalizeItinerary(rawData, preferences);
+
+      return optimizedItinerary;
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Error optimizing itinerary (attempt ${attempt}):`, error);
+      
+      // Check if it's a retryable error (503, 429, network issues)
+      if (attempt < 3 && (
+        error.message?.includes('503') || 
+        error.message?.includes('overloaded') || 
+        error.message?.includes('429') ||
+        error.message?.includes('UNAVAILABLE')
+      )) {
+        // Wait with exponential backoff (2^attempt seconds)
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // For non-retryable errors, throw immediately
+      break;
     }
-
-    return JSON.parse(rawJson);
-  } catch (error) {
-    console.error("Error optimizing itinerary:", error);
-    throw new Error(`Failed to optimize itinerary: ${error}`);
+  }
+  
+  // If we get here, all retries failed
+  if (lastError?.message?.includes('503') || lastError?.message?.includes('overloaded')) {
+    throw new Error('The AI service is temporarily overloaded. Please try again in a few moments.');
+  } else if (lastError?.message?.includes('429')) {
+    throw new Error('Too many requests. Please wait a moment and try again.');
+  } else {
+    throw new Error(`Failed to optimize itinerary: ${lastError?.message || lastError}`);
   }
 }

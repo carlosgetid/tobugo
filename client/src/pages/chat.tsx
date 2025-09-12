@@ -65,6 +65,22 @@ export default function Chat() {
     },
   });
 
+  // Optimize itinerary mutation
+  const optimizeItineraryMutation = useMutation({
+    mutationFn: async (feedback: string) => {
+      if (!generatedItinerary) throw new Error("No itinerary to optimize");
+      
+      const response = await apiRequest("POST", "/api/ai/optimize-itinerary", {
+        itinerary: generatedItinerary,
+        feedback
+      });
+      return response.json();
+    },
+    onSuccess: (optimizedItinerary) => {
+      setGeneratedItinerary(optimizedItinerary);
+    },
+  });
+
   useEffect(() => {
     if (!currentSessionId && !match) {
       createSessionMutation.mutate();
@@ -185,23 +201,25 @@ export default function Chat() {
           <ItineraryDisplay 
             itinerary={generatedItinerary}
             onModify={(feedback) => {
-              // TODO: Implement itinerary modification
-              console.log("Modify itinerary:", feedback);
+              optimizeItineraryMutation.mutate(feedback);
             }}
           />
         </div>
       )}
 
-      {generateItineraryMutation.isPending && (
+      {(generateItineraryMutation.isPending || optimizeItineraryMutation.isPending) && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <Card className="w-full max-w-md mx-4">
             <CardContent className="pt-6 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
               <h3 className="text-lg font-semibold mb-2" data-testid="text-generating">
-                Generando tu itinerary...
+                {generateItineraryMutation.isPending ? "Generando tu itinerario..." : "Optimizando tu itinerario..."}
               </h3>
               <p className="text-muted-foreground text-sm">
-                Nuestra IA está creando el viaje perfecto para ti
+                {generateItineraryMutation.isPending 
+                  ? "Nuestra IA está creando el viaje perfecto para ti"
+                  : "Aplicando tus cambios al itinerario"
+                }
               </p>
             </CardContent>
           </Card>

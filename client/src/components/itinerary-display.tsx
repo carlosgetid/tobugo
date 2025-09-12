@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import CostSummary from "@/components/cost-summary";
-import { Edit, Download, Calendar, MapPin, Plane, Bed, Utensils, Car } from "lucide-react";
+import { Edit, Download, Calendar, MapPin, Plane, Bed, Utensils, Car, Send } from "lucide-react";
 import { generatePDF } from "@/lib/pdf-generator";
 
 interface ItineraryDisplayProps {
@@ -44,6 +46,8 @@ const getActivityColor = (type: string) => {
 
 export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDisplayProps) {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
+  const [modificationText, setModificationText] = useState("");
+  const [isModificationDialogOpen, setIsModificationDialogOpen] = useState(false);
 
   const toggleDay = (index: number) => {
     const newExpanded = new Set(expandedDays);
@@ -60,6 +64,14 @@ export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDispl
       await generatePDF(itinerary);
     } catch (error) {
       console.error("Error generating PDF:", error);
+    }
+  };
+
+  const handleSendModification = () => {
+    if (modificationText.trim()) {
+      onModify(modificationText);
+      setModificationText("");
+      setIsModificationDialogOpen(false);
     }
   };
 
@@ -84,14 +96,47 @@ export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDispl
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => onModify("Quiero hacer cambios a este itinerario")}
-            data-testid="button-modify-itinerary"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Modificar
-          </Button>
+          <Dialog open={isModificationDialogOpen} onOpenChange={setIsModificationDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                data-testid="button-modify-itinerary"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Modificar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Modificar Itinerario</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Describe los cambios que te gustaría hacer a tu itinerario:
+                </p>
+                <Input
+                  placeholder="Ej: Me gustaría añadir más tiempo en el museo y visitar un restaurante local"
+                  value={modificationText}
+                  onChange={(e) => setModificationText(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendModification()}
+                  data-testid="input-modification-text"
+                />
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsModificationDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleSendModification}
+                    disabled={!modificationText.trim()}
+                    data-testid="button-send-modification"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar Cambios
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button
             onClick={handleDownloadPDF}
             data-testid="button-download-pdf"
