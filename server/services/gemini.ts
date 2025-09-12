@@ -202,8 +202,8 @@ Include flights, accommodation, daily activities, meals, and local transport wit
         contents: userPrompt,
       });
 
-      // Handle response text (could be function or property)
-      const text = typeof response.text === 'function' ? await response.text() : response.text;
+      // Handle response text property
+      const text = response.text;
       if (!text) {
         throw new Error("Empty response from Gemini AI");
       }
@@ -395,8 +395,8 @@ Please modify the itinerary according to this feedback.`;
         contents: userPrompt,
       });
 
-      // Handle response text (could be function or property)
-      const text = typeof response.text === 'function' ? await response.text() : response.text;
+      // Handle response text property
+      const text = response.text;
       if (!text) {
         throw new Error("Empty response from Gemini AI");
       }

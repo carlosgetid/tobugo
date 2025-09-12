@@ -154,7 +154,7 @@ export default function Chat() {
             {/* Chat Interface */}
             <div className="lg:col-span-2">
               <ChatInterface
-                session={chatSession}
+                session={chatSession as any}
                 onSendMessage={handleSendMessage}
                 isLoading={sendMessageMutation.isPending}
               />

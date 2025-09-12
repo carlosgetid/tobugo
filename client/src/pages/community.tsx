@@ -128,8 +128,8 @@ export default function Community() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {publicTrips?.length > 0 ? (
-                publicTrips.map((trip: any) => (
+              {publicTrips && Array.isArray(publicTrips) && publicTrips.length > 0 ? (
+                (publicTrips as any[]).map((trip: any) => (
                   <CommunityCard key={trip.id} trip={trip} />
                 ))
               ) : (

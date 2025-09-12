@@ -243,9 +243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itinerary = await generateItinerary(preferences);
       
       res.json(itinerary);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Itinerary generation error:", error);
-      res.status(400).json({ message: "Failed to generate itinerary", error: error.message });
+      res.status(400).json({ message: "Failed to generate itinerary", error: error?.message || error });
     }
   });
 
