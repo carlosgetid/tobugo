@@ -84,68 +84,29 @@ export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDispl
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header Actions */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold" data-testid="text-itinerary-header">
-            Tu Itinerario Personalizado
-          </h2>
-          <p className="text-muted-foreground">
-            {itinerary.days?.length} días • ${itinerary.totalCost?.toLocaleString()} total
-          </p>
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Main Itinerary Content - Left Side */}
+      <div className="lg:col-span-3 space-y-8">
+        {/* Header Actions */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold" data-testid="text-itinerary-header">
+              Tu Itinerario Personalizado
+            </h2>
+            <p className="text-muted-foreground">
+              {itinerary.days?.length} días • ${itinerary.totalCost?.toLocaleString()} total
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              onClick={handleDownloadPDF}
+              data-testid="button-download-pdf"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar PDF
+            </Button>
+          </div>
         </div>
-        <div className="flex space-x-2">
-          <Dialog open={isModificationDialogOpen} onOpenChange={setIsModificationDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                data-testid="button-modify-itinerary"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Modificar
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Modificar Itinerario</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Describe los cambios que te gustaría hacer a tu itinerario:
-                </p>
-                <Input
-                  placeholder="Ej: Me gustaría añadir más tiempo en el museo y visitar un restaurante local"
-                  value={modificationText}
-                  onChange={(e) => setModificationText(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendModification()}
-                  data-testid="input-modification-text"
-                />
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsModificationDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleSendModification}
-                    disabled={!modificationText.trim()}
-                    data-testid="button-send-modification"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar Cambios
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Button
-            onClick={handleDownloadPDF}
-            data-testid="button-download-pdf"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
-          </Button>
-        </div>
-      </div>
 
       {/* Itinerary Days */}
       <div className="space-y-6">
@@ -245,12 +206,71 @@ export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDispl
         )}
       </div>
 
-      {/* Cost Summary */}
-      <CostSummary
-        totalCost={itinerary.totalCost}
-        costBreakdown={itinerary.costBreakdown}
-        days={itinerary.days?.length || 0}
-      />
+        {/* Cost Summary */}
+        <CostSummary
+          totalCost={itinerary.totalCost}
+          costBreakdown={itinerary.costBreakdown}
+          days={itinerary.days?.length || 0}
+        />
+      </div>
+
+      {/* Modification Panel - Right Side */}
+      <div className="lg:col-span-1">
+        <Card className="sticky top-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Edit className="h-4 w-4 mr-2" />
+              Modificar Itinerario
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Dime qué cambios te gustaría hacer:
+            </p>
+            <div className="space-y-2">
+              <Input
+                placeholder="Ej: Añadir más tiempo en el museo..."
+                value={modificationText}
+                onChange={(e) => setModificationText(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendModification()}
+                data-testid="input-modification-text"
+                className="text-sm"
+              />
+              <Button 
+                onClick={handleSendModification}
+                disabled={!modificationText.trim()}
+                data-testid="button-send-modification"
+                size="sm"
+                className="w-full"
+              >
+                <Send className="h-3 w-3 mr-2" />
+                Enviar
+              </Button>
+            </div>
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs text-muted-foreground mb-2">
+                Ejemplos de modificaciones:
+              </p>
+              <div className="space-y-1">
+                {[
+                  "Cambiar el hotel por uno más económico",
+                  "Agregar tiempo libre en la tarde",
+                  "Incluir más restaurantes locales",
+                  "Reducir actividades del día 2"
+                ].map((example, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setModificationText(example)}
+                    className="text-xs text-left text-muted-foreground hover:text-foreground transition-colors p-1 rounded text-wrap block w-full hover:bg-muted/50"
+                  >
+                    • {example}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
