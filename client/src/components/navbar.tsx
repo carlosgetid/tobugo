@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Plane, Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -43,6 +44,7 @@ export default function Navbar() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <ThemeToggle />
             <Button className="hidden sm:block" data-testid="button-login">
               Iniciar Sesión
             </Button>
