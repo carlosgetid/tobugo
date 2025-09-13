@@ -2,43 +2,28 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertUserSchema, insertTripSchema, insertChatSessionSchema, insertReviewSchema, insertSavedTripSchema } from "@shared/schema";
+import { insertTripSchema, insertChatSessionSchema, insertReviewSchema, insertSavedTripSchema } from "@shared/schema";
 import { generateItinerary, processConversation, optimizeItinerary, type TravelPreferences } from "./services/gemini";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // User routes
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const userData = insertUserSchema.parse(req.body);
-      const existingUser = await storage.getUserByEmail(userData.email);
-      
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
+  // Setup Replit Auth middleware
+  await setupAuth(app);
 
-      const user = await storage.createUser(userData);
-      res.json({ id: user.id, username: user.username, email: user.email });
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
     } catch (error) {
-      res.status(400).json({ message: "Invalid user data", error });
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      const user = await storage.getUserByEmail(email);
-      
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      res.json({ id: user.id, username: user.username, email: user.email });
-    } catch (error) {
-      res.status(500).json({ message: "Login failed", error });
-    }
-  });
-
-  app.get("/api/users/:id", async (req, res) => {
+  // User routes (protected)
+  app.get("/api/users/:id", isAuthenticated, async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -62,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/trips/user/:userId", async (req, res) => {
+  app.get("/api/trips/user/:userId", isAuthenticated, async (req, res) => {
     try {
       const trips = await storage.getTripsByUserId(req.params.userId);
       res.json(trips);
@@ -83,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/trips", async (req, res) => {
+  app.post("/api/trips", isAuthenticated, async (req, res) => {
     try {
       const tripData = insertTripSchema.parse(req.body);
       const trip = await storage.createTrip(tripData);
@@ -93,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/trips/:id", async (req, res) => {
+  app.put("/api/trips/:id", isAuthenticated, async (req, res) => {
     try {
       const tripData = insertTripSchema.partial().parse(req.body);
       const trip = await storage.updateTrip(req.params.id, tripData);
@@ -103,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/trips/:id", async (req, res) => {
+  app.delete("/api/trips/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteTrip(req.params.id);
       res.json({ message: "Trip deleted successfully" });
@@ -112,8 +97,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat session routes
-  app.get("/api/chat/user/:userId", async (req, res) => {
+  // Chat session routes (protected)
+  app.get("/api/chat/user/:userId", isAuthenticated, async (req, res) => {
     try {
       const sessions = await storage.getChatSessionsByUserId(req.params.userId);
       res.json(sessions);
@@ -122,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/chat/:id", async (req, res) => {
+  app.get("/api/chat/:id", isAuthenticated, async (req, res) => {
     try {
       const session = await storage.getChatSession(req.params.id);
       if (!session) {
@@ -134,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", isAuthenticated, async (req, res) => {
     try {
       const sessionData = insertChatSessionSchema.parse(req.body);
       const session = await storage.createChatSession(sessionData);
@@ -144,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chat/:id/message", async (req, res) => {
+  app.post("/api/chat/:id/message", isAuthenticated, async (req, res) => {
     try {
       const { message } = req.body;
       const sessionId = req.params.id;
@@ -334,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reviews/user/:userId", async (req, res) => {
+  app.get("/api/reviews/user/:userId", isAuthenticated, async (req, res) => {
     try {
       const reviews = await storage.getReviewsByUserId(req.params.userId);
       res.json(reviews);
@@ -343,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/reviews", async (req, res) => {
+  app.post("/api/reviews", isAuthenticated, async (req, res) => {
     try {
       const reviewData = insertReviewSchema.parse(req.body);
       const review = await storage.createReview(reviewData);
@@ -353,8 +338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Saved trips routes
-  app.get("/api/saved-trips/user/:userId", async (req, res) => {
+  // Saved trips routes (protected)
+  app.get("/api/saved-trips/user/:userId", isAuthenticated, async (req, res) => {
     try {
       const savedTrips = await storage.getSavedTripsByUserId(req.params.userId);
       res.json(savedTrips);
@@ -363,7 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/saved-trips", async (req, res) => {
+  app.post("/api/saved-trips", isAuthenticated, async (req, res) => {
     try {
       const savedTripData = insertSavedTripSchema.parse(req.body);
       const savedTrip = await storage.createSavedTrip(savedTripData);
@@ -373,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/saved-trips/:userId/:tripId", async (req, res) => {
+  app.delete("/api/saved-trips/:userId/:tripId", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteSavedTrip(req.params.userId, req.params.tripId);
       res.json({ message: "Trip removed from saved trips" });
