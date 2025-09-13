@@ -1,33 +1,13 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Plane } from "lucide-react";
+import { VideoHero } from "@/components/video-hero";
 
 export default function Home() {
   return (
     <div>
-      {/* Hero Section */}
-      <section className="gradient-bg text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6" data-testid="text-hero-title">
-            Planifica tu viaje perfecto<br />
-            <span className="text-white/90">con IA</span>
-          </h1>
-          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto" data-testid="text-hero-subtitle">
-            Deja que nuestra inteligencia artificial te ayude a crear itinerarios personalizados, 
-            encontrar los mejores precios y conectar con otros viajeros.
-          </p>
-          <Link href="/chat">
-            <Button 
-              size="lg" 
-              className="bg-white text-primary px-8 py-4 text-lg font-semibold hover:bg-white/95 transition-colors"
-              data-testid="button-start-planning"
-            >
-              Comenzar a Planificar
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
-        </div>
-      </section>
+      {/* Hero Section with Video Background */}
+      <VideoHero />
 
       {/* Features Section */}
       <section className="py-20 bg-background">
