@@ -1,4 +1,4 @@
-import { users, trips, chatSessions, reviews, savedTrips, type User, type InsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip } from "@shared/schema";
+import { users, trips, chatSessions, reviews, savedTrips, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 
@@ -8,6 +8,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  // Required for Replit Auth
+  upsertUser(user: UpsertUser): Promise<User>;
 
   // Trips
   getTrip(id: string): Promise<Trip | undefined>;
@@ -58,6 +60,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // Required for Replit Auth - upserts user based on id
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const { id: _id, ...rest } = userData;
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...rest,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
   // Trips
   async getTrip(id: string): Promise<Trip | undefined> {
     const [trip] = await db.select().from(trips).where(eq(trips.id, id));
@@ -73,13 +92,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTrip(insertTrip: InsertTrip): Promise<Trip> {
-    const [trip] = await db.insert(trips).values(insertTrip).returning();
+    const [trip] = await db.insert(trips).values(insertTrip as typeof trips.$inferInsert).returning();
     return trip;
   }
 
   async updateTrip(id: string, updateTrip: Partial<InsertTrip>): Promise<Trip> {
     const [trip] = await db.update(trips)
-      .set({ ...updateTrip, updatedAt: new Date() })
+      .set({ ...(updateTrip as Partial<typeof trips.$inferInsert>), updatedAt: new Date() })
       .where(eq(trips.id, id))
       .returning();
     return trip;
@@ -102,13 +121,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChatSession(insertSession: InsertChatSession): Promise<ChatSession> {
-    const [session] = await db.insert(chatSessions).values(insertSession).returning();
+    const [session] = await db.insert(chatSessions).values(insertSession as typeof chatSessions.$inferInsert).returning();
     return session;
   }
 
   async updateChatSession(id: string, updateSession: Partial<InsertChatSession>): Promise<ChatSession> {
     const [session] = await db.update(chatSessions)
-      .set({ ...updateSession, updatedAt: new Date() })
+      .set({ ...(updateSession as Partial<typeof chatSessions.$inferInsert>), updatedAt: new Date() })
       .where(eq(chatSessions.id, id))
       .returning();
     return session;
