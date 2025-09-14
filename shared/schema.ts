@@ -154,6 +154,29 @@ export const insertTripSchema = createInsertSchema(trips).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  itinerary: z.object({
+    days: z.array(z.object({
+      date: z.string(),
+      activities: z.array(z.object({
+        time: z.string(),
+        title: z.string(),
+        description: z.string(),
+        type: z.enum(['flight', 'accommodation', 'activity', 'transport', 'meal']),
+        cost: z.number().optional(),
+        location: z.string().optional(),
+      })),
+      totalCost: z.number(),
+    })),
+    totalCost: z.number(),
+    costBreakdown: z.object({
+      flights: z.number(),
+      accommodation: z.number(),
+      activities: z.number(),
+      meals: z.number(),
+      transport: z.number(),
+    }),
+  }).optional(),
 });
 
 export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({
