@@ -21,7 +21,7 @@ export function VideoHero() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentVideoIndex((prev) => (prev + 1) % videoSources.length);
-      setIsVideoLoaded(false);
+      // No resetear isVideoLoaded para evitar interrupciones visuales
     }, 7000); // Changed from 15000 to 7000 milliseconds
 
     return () => clearInterval(interval);
@@ -34,7 +34,7 @@ export function VideoHero() {
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     console.error("Video failed to load:", videoSources[currentVideoIndex], e);
-    setIsVideoLoaded(false);
+    // Mantener isVideoLoaded en true para evitar pantallas vacías
   };
 
   return (
@@ -48,9 +48,9 @@ export function VideoHero() {
           muted
           loop
           playsInline
-          onLoadedData={handleVideoLoad}
+          preload="metadata"
+          onCanPlay={handleVideoLoad}
           onError={handleVideoError}
-          poster="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM0M2EwNTgiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxNGI3ZGQiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNnKSIvPjwvc3ZnPg=="
           src={videoSources[currentVideoIndex]}
           data-testid="hero-video"
           data-active-index={currentVideoIndex}
