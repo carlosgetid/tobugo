@@ -58,11 +58,6 @@ export function VideoHero() {
         
         {/* Overlay para mejor legibilidad del texto */}
         <div className="absolute inset-0 bg-black/40" />
-        
-        {/* Loading fallback con gradiente */}
-        {!isVideoLoaded && (
-          <div className="absolute inset-0 gradient-bg" />
-        )}
       </div>
 
       {/* Content */}
