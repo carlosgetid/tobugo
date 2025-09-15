@@ -2,37 +2,20 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import userVideo from "@assets/230575_small_1757936852080.mp4";
+import userVideo1 from "@assets/230575_small_1757936852080.mp4";
+import userVideo2 from "@assets/12584129_1080_1920_60fps_1757937267745.mp4";
+import userVideo3 from "@assets/16119043-hd_1080_1920_30fps (1)_1757937270131.mp4";
 
-// User's custom video and fallback videos for reliable production use
-const fallbackVideoSources = [
-  userVideo, // User's custom video first
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
+// User's custom videos
+const videoSources = [
+  userVideo1,
+  userVideo2,
+  userVideo3
 ];
-
-interface TravelContent {
-  videos: string[];
-  images: string[];
-}
 
 export function VideoHero() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-
-  // Fetch travel content from Pixabay
-  const { data: travelContent } = useQuery<TravelContent>({
-    queryKey: ['/api/pixabay/travel-content'],
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    retry: 1,
-  });
-
-  // Always include user's video first, then add Pixabay videos or fallbacks
-  const videoSources = travelContent?.videos?.length && travelContent.videos.length > 0 
-    ? [userVideo, ...travelContent.videos.slice(0, 7)] // User video + up to 7 Pixabay videos
-    : fallbackVideoSources; // User video + fallback videos
 
   // Cambiar video cada 7 segundos
   useEffect(() => {
@@ -108,7 +91,7 @@ export function VideoHero() {
 
       {/* Video indicators */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
-        {videoSources.map((_, index) => (
+        {videoSources.map((_, index: number) => (
           <button
             key={index}
             className={`w-2 h-2 rounded-full transition-colors ${
