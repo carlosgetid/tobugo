@@ -53,8 +53,8 @@ export default function Navbar() {
               Comunidad
             </Link>
             <Link 
-              href="#" 
-              className="text-muted-foreground hover:text-primary transition-colors"
+              href="/itinerarios" 
+              className={`transition-colors ${isActive('/itinerarios') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
               data-testid="link-trips"
             >
               Mis Viajes
@@ -128,8 +128,8 @@ export default function Navbar() {
                 Comunidad
               </Link>
               <Link 
-                href="#" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                href="/itinerarios" 
+                className={`transition-colors ${isActive('/itinerarios') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
                 onClick={() => setIsMobileMenuOpen(false)}
                 data-testid="link-trips-mobile"
               >

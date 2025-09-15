@@ -188,10 +188,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Saved Trips
-  async getSavedTripsByUserId(userId: string): Promise<SavedTrip[]> {
-    return await db.select().from(savedTrips)
+  async getSavedTripsByUserId(userId: string): Promise<Trip[]> {
+    const savedTripsWithDetails = await db.select({
+      id: trips.id,
+      title: trips.title,
+      description: trips.description,
+      destination: trips.destination,
+      startDate: trips.startDate,
+      endDate: trips.endDate,
+      budget: trips.budget,
+      currency: trips.currency,
+      isPublic: trips.isPublic,
+      itinerary: trips.itinerary,
+      preferences: trips.preferences,
+      createdAt: trips.createdAt,
+      updatedAt: trips.updatedAt,
+      userId: trips.userId
+    }).from(savedTrips)
+      .innerJoin(trips, eq(savedTrips.tripId, trips.id))
       .where(eq(savedTrips.userId, userId))
       .orderBy(desc(savedTrips.createdAt));
+    
+    return savedTripsWithDetails;
   }
 
   async createSavedTrip(insertSavedTrip: InsertSavedTrip): Promise<SavedTrip> {

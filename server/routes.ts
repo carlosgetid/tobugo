@@ -53,8 +53,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user's trips (authenticated)
+  app.get("/api/trips/user", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const trips = await storage.getTripsByUserId(userId);
+      res.json(trips);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get user trips", error });
+    }
+  });
+
   app.get("/api/trips/user/:userId", isAuthenticated, async (req, res) => {
     try {
+      const requestingUserId = req.user.claims.sub;
+      const targetUserId = req.params.userId;
+      
+      // Security: Only allow users to access their own trips
+      if (requestingUserId !== targetUserId) {
+        return res.status(403).json({ message: "Forbidden: You can only access your own trips" });
+      }
+      
       const trips = await storage.getTripsByUserId(req.params.userId);
       res.json(trips);
     } catch (error) {
@@ -345,6 +364,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Saved trips routes (protected)
+  // Get current user's saved trips (authenticated)
+  app.get("/api/trips/saved", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const savedTrips = await storage.getSavedTripsByUserId(userId);
+      res.json(savedTrips);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get saved trips", error });
+    }
+  });
+
   app.get("/api/saved-trips/user/:userId", isAuthenticated, async (req, res) => {
     try {
       const savedTrips = await storage.getSavedTripsByUserId(req.params.userId);

@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Chat from "@/pages/chat";
 import Community from "@/pages/community";
+import Itinerarios from "@/pages/itinerarios";
 import NotFound from "@/pages/not-found";
 import Navbar from "@/components/navbar";
 import { useEffect } from "react";
@@ -84,6 +85,12 @@ function Router() {
         <Route path="/community" component={() => (
           <ProtectedRoute>
             <Community />
+          </ProtectedRoute>
+        )} />
+        
+        <Route path="/itinerarios" component={() => (
+          <ProtectedRoute>
+            <Itinerarios />
           </ProtectedRoute>
         )} />
         
