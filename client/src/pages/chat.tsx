@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Sparkles } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(params?.id || null);
   const [generatedItinerary, setGeneratedItinerary] = useState(null);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Create new chat session
   const createSessionMutation = useMutation({
@@ -113,10 +115,11 @@ export default function Chat() {
   });
 
   useEffect(() => {
-    if (!currentSessionId && !match) {
+    // Only create session if user is authenticated, no current session, not on specific route, and not already creating
+    if (isAuthenticated && !currentSessionId && !match && !createSessionMutation.isPending) {
       createSessionMutation.mutate();
     }
-  }, [currentSessionId, match]);
+  }, [currentSessionId, match, isAuthenticated, createSessionMutation.isPending]);
 
   const handleSendMessage = (message: string) => {
     if (currentSessionId) {
@@ -124,12 +127,15 @@ export default function Chat() {
     }
   };
 
-  if (!currentSessionId || sessionLoading) {
+  // Show loading while auth is loading or session is loading
+  if (authLoading || (!currentSessionId && !createSessionMutation.isPending) || sessionLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Iniciando conversación...</p>
+          <p className="text-muted-foreground">
+            {authLoading ? 'Verificando autenticación...' : 'Iniciando conversación...'}
+          </p>
         </div>
       </div>
     );
