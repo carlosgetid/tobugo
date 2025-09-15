@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,37 +8,94 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CommunityCard from "@/components/community-card";
 import { Users, TrendingUp, MessageSquare, ThumbsUp, Calendar, DollarSign, Star, Plus, MessageCircle } from "lucide-react";
 
+// Types for API responses
+interface CommunityStats {
+  totalTrips: number;
+  totalUsers: number;
+  totalReviews: number;
+  averageRating: number;
+}
+
+interface ReviewWithUser {
+  id: string;
+  userId: string;
+  tripId: string | null;
+  targetType: string;
+  targetId: string;
+  rating: number;
+  comment: string | null;
+  helpful: number | null;
+  createdAt: Date | null;
+  user: {
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+  };
+  targetName?: string;
+}
+
 export default function Community() {
   const [activeTab, setActiveTab] = useState("itinerarios");
+  const { toast } = useToast();
 
   // Get public trips
   const { data: publicTrips, isLoading: tripsLoading } = useQuery({
     queryKey: ['/api/trips/public'],
   });
 
-  // Mock reviews data (replace with real API call)
-  const mockReviews = [
-    {
-      id: "1",
-      userName: "Laura Jiménez",
-      userAvatar: "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40",
-      rating: 5,
-      targetName: "Hotel Le Marais",
-      comment: "Excelente ubicación en el corazón de París. El personal fue muy amable y las habitaciones están perfectamente equipadas. Definitivamente lo recomiendo para estadías cortas.",
-      helpful: 12,
-      createdAt: "Hace 2 días"
+  // Get community statistics and reviews
+  const { data: communityStats } = useQuery<CommunityStats>({
+    queryKey: ['/api/community/stats'],
+  });
+
+  const { data: recentReviews, isLoading: reviewsLoading } = useQuery<ReviewWithUser[]>({
+    queryKey: ['/api/reviews/recent'],
+  });
+
+  // Mutation for marking review as helpful
+  const helpfulMutation = useMutation({
+    mutationFn: async (reviewId: string) => {
+      const response = await fetch(`/api/reviews/${reviewId}/helpful`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.status === 409) {
+        throw new Error('Ya has marcado esta reseña como útil');
+      }
+      
+      if (!response.ok) {
+        throw new Error('Error al marcar la reseña como útil');
+      }
+      
+      return response.json();
     },
-    {
-      id: "2", 
-      userName: "Diego Pérez",
-      userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40",
-      rating: 4,
-      targetName: "Torre Eiffel",
-      comment: "Imprescindible visitar París. Recomiendo ir temprano para evitar las multitudes. La vista desde arriba es espectacular, especialmente al atardecer.",
-      helpful: 8,
-      createdAt: "Hace 5 días"
-    }
-  ];
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reviews/recent'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Error al marcar la reseña como útil",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper functions
+  const formatRelativeTime = (date: Date | null) => {
+    if (!date) return "Recientemente";
+    const now = new Date();
+    const diffInMs = now.getTime() - new Date(date).getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return "Hoy";
+    if (diffInDays === 1) return "Ayer";
+    if (diffInDays < 7) return `Hace ${diffInDays} días`;
+    return new Date(date).toLocaleDateString('es-ES');
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -58,7 +117,9 @@ export default function Community() {
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-8 w-8 text-primary" />
               <div>
-                <p className="text-2xl font-bold" data-testid="text-stat-trips">240+</p>
+                <p className="text-2xl font-bold" data-testid="text-stat-trips">
+                  {communityStats?.totalTrips || 0}
+                </p>
                 <p className="text-xs text-muted-foreground">Itinerarios</p>
               </div>
             </div>
@@ -70,7 +131,9 @@ export default function Community() {
             <div className="flex items-center space-x-2">
               <Users className="h-8 w-8 text-secondary" />
               <div>
-                <p className="text-2xl font-bold" data-testid="text-stat-users">1.2k</p>
+                <p className="text-2xl font-bold" data-testid="text-stat-users">
+                  {communityStats?.totalUsers || 0}
+                </p>
                 <p className="text-xs text-muted-foreground">Viajeros</p>
               </div>
             </div>
@@ -82,7 +145,9 @@ export default function Community() {
             <div className="flex items-center space-x-2">
               <MessageSquare className="h-8 w-8 text-accent" />
               <div>
-                <p className="text-2xl font-bold" data-testid="text-stat-reviews">850+</p>
+                <p className="text-2xl font-bold" data-testid="text-stat-reviews">
+                  {communityStats?.totalReviews || 0}
+                </p>
                 <p className="text-xs text-muted-foreground">Reseñas</p>
               </div>
             </div>
@@ -94,7 +159,9 @@ export default function Community() {
             <div className="flex items-center space-x-2">
               <Star className="h-8 w-8 text-yellow-500" />
               <div>
-                <p className="text-2xl font-bold" data-testid="text-stat-rating">4.8</p>
+                <p className="text-2xl font-bold" data-testid="text-stat-rating">
+                  {communityStats?.averageRating ? communityStats.averageRating.toFixed(1) : "0.0"}
+                </p>
                 <p className="text-xs text-muted-foreground">Promedio</p>
               </div>
             </div>
@@ -158,54 +225,102 @@ export default function Community() {
         </TabsContent>
 
         <TabsContent value="reseñas" className="space-y-4">
-          <div className="space-y-4">
-            {mockReviews.map((review) => (
-              <Card key={review.id}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start space-x-4">
-                    <img 
-                      src={review.userAvatar} 
-                      alt="User profile" 
-                      className="w-10 h-10 rounded-full object-cover"
-                      data-testid={`img-reviewer-${review.id}`}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <p className="font-medium" data-testid={`text-reviewer-name-${review.id}`}>
-                          {review.userName}
-                        </p>
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star 
-                              key={i} 
-                              className={`text-sm ${i < review.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-muted-foreground" data-testid={`text-review-target-${review.id}`}>
-                          {review.targetName}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2" data-testid={`text-review-comment-${review.id}`}>
-                        {review.comment}
-                      </p>
-                      <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                        <span data-testid={`text-review-date-${review.id}`}>{review.createdAt}</span>
-                        <Button variant="ghost" size="sm" className="h-auto p-0" data-testid={`button-reply-${review.id}`}>
-                          <MessageCircle className="h-3 w-3 mr-1" />
-                          Responder
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-auto p-0" data-testid={`button-helpful-${review.id}`}>
-                          <ThumbsUp className="h-3 w-3 mr-1" />
-                          {review.helpful}
-                        </Button>
+          {reviewsLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card key={index} className="animate-pulse">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-10 h-10 bg-muted rounded-full"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded w-1/4"></div>
+                        <div className="h-3 bg-muted rounded w-full"></div>
+                        <div className="h-3 bg-muted rounded w-3/4"></div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : recentReviews && recentReviews.length > 0 ? (
+            <div className="space-y-4">
+              {recentReviews.map((review) => (
+                <Card key={review.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white text-sm font-medium">
+                        {review.user.firstName?.charAt(0) || review.user.lastName?.charAt(0) || 'U'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <p className="font-medium" data-testid={`text-reviewer-name-${review.id}`}>
+                            {review.user.firstName && review.user.lastName 
+                              ? `${review.user.firstName} ${review.user.lastName}`
+                              : `Usuario #${review.userId.slice(-6)}`
+                            }
+                          </p>
+                          <div className="flex items-center space-x-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`text-sm ${i < review.rating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground" data-testid={`text-review-target-${review.id}`}>
+                            {review.targetName || review.targetId}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2" data-testid={`text-review-comment-${review.id}`}>
+                          {review.comment || "Sin comentario"}
+                        </p>
+                        <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                          <span data-testid={`text-review-date-${review.id}`}>
+                            {formatRelativeTime(review.createdAt)}
+                          </span>
+                          <Button variant="ghost" size="sm" className="h-auto p-0" data-testid={`button-reply-${review.id}`}>
+                            <MessageCircle className="h-3 w-3 mr-1" />
+                            Responder
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-auto p-0" 
+                            onClick={() => helpfulMutation.mutate(review.id)}
+                            disabled={helpfulMutation.isPending}
+                            data-testid={`button-helpful-${review.id}`}
+                          >
+                            <ThumbsUp className="h-3 w-3 mr-1" />
+                            {review.helpful || 0}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                  <MessageSquare className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2" data-testid="text-no-reviews-title">
+                    No hay reseñas aún
+                  </h3>
+                  <p className="text-muted-foreground mb-4" data-testid="text-no-reviews-subtitle">
+                    Sé el primero en compartir tu experiencia y ayudar a otros viajeros
+                  </p>
+                  <Button data-testid="button-write-first-review">
+                    <Star className="h-4 w-4 mr-2" />
+                    Escribir Primera Reseña
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="contribuciones">

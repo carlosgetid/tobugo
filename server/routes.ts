@@ -373,6 +373,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Community statistics routes (public)
+  app.get("/api/community/stats", async (req, res) => {
+    try {
+      const stats = await storage.getCommunityStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching community stats:", error);
+      res.status(500).json({ message: "Failed to fetch community stats", error });
+    }
+  });
+
+  // Recent reviews routes (public)
+  app.get("/api/reviews/recent", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const reviews = await storage.getRecentReviews(limit);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Error fetching recent reviews:", error);
+      res.status(500).json({ message: "Failed to fetch recent reviews", error });
+    }
+  });
+
+  // Update review helpful count (protected)
+  app.post("/api/reviews/:reviewId/helpful", isAuthenticated, async (req, res) => {
+    try {
+      const reviewId = req.params.reviewId;
+      const userId = req.user.claims.sub;
+      const review = await storage.incrementReviewHelpful(reviewId, userId);
+      
+      if (review === null) {
+        return res.status(409).json({ message: "You have already marked this review as helpful" });
+      }
+      
+      res.json(review);
+    } catch (error) {
+      console.error("Error updating review helpful count:", error);
+      res.status(500).json({ message: "Failed to update review helpful count", error });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

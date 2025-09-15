@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, jsonb, decimal, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, jsonb, decimal, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -104,6 +104,16 @@ export const savedTrips = pgTable("saved_trips", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const reviewHelpfuls = pgTable("review_helpfuls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  reviewId: varchar("review_id").notNull().references(() => reviews.id),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => [
+  // UNIQUE constraint: one helpful per user per review
+  uniqueIndex("unique_user_review_helpful").on(table.userId, table.reviewId)
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   trips: many(trips),
@@ -124,14 +134,20 @@ export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
   trip: one(trips, { fields: [chatSessions.tripId], references: [trips.id] }),
 }));
 
-export const reviewsRelations = relations(reviews, ({ one }) => ({
+export const reviewsRelations = relations(reviews, ({ one, many }) => ({
   user: one(users, { fields: [reviews.userId], references: [users.id] }),
   trip: one(trips, { fields: [reviews.tripId], references: [trips.id] }),
+  helpfuls: many(reviewHelpfuls),
 }));
 
 export const savedTripsRelations = relations(savedTrips, ({ one }) => ({
   user: one(users, { fields: [savedTrips.userId], references: [users.id] }),
   trip: one(trips, { fields: [savedTrips.tripId], references: [trips.id] }),
+}));
+
+export const reviewHelpfulsRelations = relations(reviewHelpfuls, ({ one }) => ({
+  user: one(users, { fields: [reviewHelpfuls.userId], references: [users.id] }),
+  review: one(reviews, { fields: [reviewHelpfuls.reviewId], references: [reviews.id] }),
 }));
 
 // Insert schemas

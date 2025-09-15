@@ -1,6 +1,6 @@
-import { users, trips, chatSessions, reviews, savedTrips, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip } from "@shared/schema";
+import { users, trips, chatSessions, reviews, savedTrips, reviewHelpfuls, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, count, avg, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -36,6 +36,29 @@ export interface IStorage {
   getSavedTripsByUserId(userId: string): Promise<SavedTrip[]>;
   createSavedTrip(savedTrip: InsertSavedTrip): Promise<SavedTrip>;
   deleteSavedTrip(userId: string, tripId: string): Promise<void>;
+
+  // Community functionality
+  getCommunityStats(): Promise<CommunityStats>;
+  getRecentReviews(limit: number): Promise<ReviewWithUser[]>;
+  incrementReviewHelpful(reviewId: string, userId: string): Promise<Review | null>;
+}
+
+// Community stats type
+export interface CommunityStats {
+  totalTrips: number;
+  totalUsers: number;
+  totalReviews: number;
+  averageRating: number;
+}
+
+// Review with user information
+export interface ReviewWithUser extends Review {
+  user: {
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+  };
+  targetName?: string;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -179,6 +202,87 @@ export class DatabaseStorage implements IStorage {
   async deleteSavedTrip(userId: string, tripId: string): Promise<void> {
     await db.delete(savedTrips)
       .where(and(eq(savedTrips.userId, userId), eq(savedTrips.tripId, tripId)));
+  }
+
+  // Community functionality
+  async getCommunityStats(): Promise<CommunityStats> {
+    const [tripsCount] = await db.select({ count: count() }).from(trips);
+    const [usersCount] = await db.select({ count: count() }).from(users);
+    const [reviewsCount] = await db.select({ count: count() }).from(reviews);
+    const [avgRating] = await db.select({ avg: avg(reviews.rating) }).from(reviews);
+
+    return {
+      totalTrips: tripsCount.count,
+      totalUsers: usersCount.count,
+      totalReviews: reviewsCount.count,
+      averageRating: parseFloat(avgRating.avg || "0"),
+    };
+  }
+
+  async getRecentReviews(limit: number): Promise<ReviewWithUser[]> {
+    const recentReviews = await db
+      .select({
+        id: reviews.id,
+        userId: reviews.userId,
+        tripId: reviews.tripId,
+        targetType: reviews.targetType,
+        targetId: reviews.targetId,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        helpful: reviews.helpful,
+        createdAt: reviews.createdAt,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userProfileImageUrl: users.profileImageUrl,
+      })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.userId, users.id))
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit);
+
+    return recentReviews.map(review => ({
+      id: review.id,
+      userId: review.userId,
+      tripId: review.tripId,
+      targetType: review.targetType,
+      targetId: review.targetId,
+      rating: review.rating,
+      comment: review.comment,
+      helpful: review.helpful,
+      createdAt: review.createdAt,
+      user: {
+        firstName: review.userFirstName,
+        lastName: review.userLastName,
+        profileImageUrl: review.userProfileImageUrl,
+      },
+      targetName: review.targetId, // For now, use targetId as name
+    }));
+  }
+
+  async incrementReviewHelpful(reviewId: string, userId: string): Promise<Review | null> {
+    try {
+      // Attempt to insert the helpful vote (will fail if duplicate due to unique constraint)
+      await db.insert(reviewHelpfuls).values({
+        reviewId,
+        userId,
+      });
+
+      // If insert was successful, increment the helpful count atomically
+      const [review] = await db
+        .update(reviews)
+        .set({ helpful: sql`coalesce(${reviews.helpful}, 0) + 1` })
+        .where(eq(reviews.id, reviewId))
+        .returning();
+      
+      return review;
+    } catch (error: any) {
+      // If the error is a unique constraint violation, user has already voted
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 }
 
