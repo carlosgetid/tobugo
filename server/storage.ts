@@ -1,6 +1,6 @@
 import { users, trips, chatSessions, reviews, savedTrips, reviewHelpfuls, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, avg, sql } from "drizzle-orm";
+import { eq, desc, and, count, avg, sql, gte, lte, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -14,7 +14,14 @@ export interface IStorage {
   // Trips
   getTrip(id: string): Promise<Trip | undefined>;
   getTripsByUserId(userId: string): Promise<Trip[]>;
-  getPublicTrips(): Promise<Trip[]>;
+  getPublicTrips(filters?: {
+    destination?: string;
+    minBudget?: number;
+    maxBudget?: number;
+    minDuration?: number;
+    maxDuration?: number;
+    travelStyle?: string;
+  }): Promise<Trip[]>;
   createTrip(trip: InsertTrip): Promise<Trip>;
   updateTrip(id: string, trip: Partial<InsertTrip>): Promise<Trip>;
   deleteTrip(id: string): Promise<void>;
@@ -110,8 +117,46 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(trips).where(eq(trips.userId, userId)).orderBy(desc(trips.createdAt));
   }
 
-  async getPublicTrips(): Promise<Trip[]> {
-    return await db.select().from(trips).where(eq(trips.isPublic, true)).orderBy(desc(trips.createdAt));
+  async getPublicTrips(filters?: {
+    destination?: string;
+    minBudget?: number;
+    maxBudget?: number;
+    minDuration?: number;
+    maxDuration?: number;
+    travelStyle?: string;
+  }): Promise<Trip[]> {
+    let conditions = [eq(trips.isPublic, true)];
+    
+    if (filters) {
+      if (filters.destination) {
+        conditions.push(sql`LOWER(${trips.destination}) LIKE LOWER(${'%' + filters.destination + '%'})`);
+      }
+      
+      if (filters.minBudget !== undefined) {
+        conditions.push(sql`CAST(${trips.budget} AS DECIMAL) >= ${filters.minBudget}`);
+      }
+      
+      if (filters.maxBudget !== undefined) {
+        conditions.push(sql`CAST(${trips.budget} AS DECIMAL) <= ${filters.maxBudget}`);
+      }
+      
+      if (filters.travelStyle) {
+        conditions.push(sql`${trips.preferences}->>'travelStyle' ILIKE ${'%' + filters.travelStyle + '%'}`);
+      }
+      
+      // Duration filtering based on date difference
+      if (filters.minDuration !== undefined) {
+        conditions.push(sql`EXTRACT(DAY FROM ${trips.endDate} - ${trips.startDate}) >= ${filters.minDuration}`);
+      }
+      
+      if (filters.maxDuration !== undefined) {
+        conditions.push(sql`EXTRACT(DAY FROM ${trips.endDate} - ${trips.startDate}) <= ${filters.maxDuration}`);
+      }
+    }
+    
+    return await db.select().from(trips)
+      .where(and(...conditions))
+      .orderBy(desc(trips.createdAt));
   }
 
   async createTrip(insertTrip: InsertTrip): Promise<Trip> {

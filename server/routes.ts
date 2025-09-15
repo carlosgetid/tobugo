@@ -43,10 +43,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Trip routes
+  // Trip routes  
   app.get("/api/trips/public", async (req, res) => {
     try {
-      const trips = await storage.getPublicTrips();
+      const filters = {
+        destination: req.query.destination as string,
+        minBudget: req.query.minBudget ? parseFloat(req.query.minBudget as string) : undefined,
+        maxBudget: req.query.maxBudget ? parseFloat(req.query.maxBudget as string) : undefined,
+        minDuration: req.query.minDuration ? parseInt(req.query.minDuration as string) : undefined,
+        maxDuration: req.query.maxDuration ? parseInt(req.query.maxDuration as string) : undefined,
+        travelStyle: req.query.travelStyle as string,
+      };
+      
+      // Remove undefined values
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v !== undefined)
+      );
+      
+      const trips = await storage.getPublicTrips(Object.keys(cleanFilters).length > 0 ? cleanFilters : undefined);
       res.json(trips);
     } catch (error) {
       res.status(500).json({ message: "Failed to get public trips", error });
