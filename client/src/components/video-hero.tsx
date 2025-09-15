@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import userVideo from "@assets/230575_small_1757936852080.mp4";
 
-// Fallback videos for reliable production use
+// User's custom video and fallback videos for reliable production use
 const fallbackVideoSources = [
+  userVideo, // User's custom video first
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
@@ -27,10 +29,10 @@ export function VideoHero() {
     retry: 1,
   });
 
-  // Use Pixabay videos if available, otherwise fallback
+  // Always include user's video first, then add Pixabay videos or fallbacks
   const videoSources = travelContent?.videos?.length && travelContent.videos.length > 0 
-    ? travelContent.videos.slice(0, 8) // Limit to 8 videos for performance
-    : fallbackVideoSources;
+    ? [userVideo, ...travelContent.videos.slice(0, 7)] // User video + up to 7 Pixabay videos
+    : fallbackVideoSources; // User video + fallback videos
 
   // Cambiar video cada 7 segundos
   useEffect(() => {
