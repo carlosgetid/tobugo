@@ -38,6 +38,35 @@ export default function Community() {
   const [activeTab, setActiveTab] = useState("itinerarios");
   const { toast } = useToast();
 
+  // Mutation for saving trips to user's itinerary
+  const saveToItineraryMutation = useMutation({
+    mutationFn: async (tripId: string) => {
+      return apiRequest('POST', '/api/saved-trips', {
+        tripId,
+        userId: 'current-user' // This will be replaced with actual user ID by backend
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "¡Guardado exitosamente!",
+        description: "El itinerario se añadió a tus viajes guardados",
+      });
+      // Invalidate saved trips query to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/trips/saved'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al guardar",
+        description: error?.message || "No se pudo guardar el itinerario",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveTrip = (tripId: string) => {
+    saveToItineraryMutation.mutate(tripId);
+  };
+
   // Get public trips
   const { data: publicTrips, isLoading: tripsLoading } = useQuery({
     queryKey: ['/api/trips/public'],
@@ -197,7 +226,7 @@ export default function Community() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {publicTrips && Array.isArray(publicTrips) && publicTrips.length > 0 ? (
                 (publicTrips as any[]).map((trip: any) => (
-                  <CommunityCard key={trip.id} trip={trip} />
+                  <CommunityCard key={trip.id} trip={trip} onSave={handleSaveTrip} />
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">
