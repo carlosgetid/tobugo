@@ -2,30 +2,45 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-// URLs de videos gratuitos y funcionales - listos para producción
-const videoSources = [
-  // Videos estables y confiables para lugares turísticos  
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", // Google CDN - muy confiable
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", // Otro de Google CDN
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", // Video corto HD
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4", // Video de aventura
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4" // Video dinámico
+// Fallback videos for reliable production use
+const fallbackVideoSources = [
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
 ];
+
+interface TravelContent {
+  videos: string[];
+  images: string[];
+}
 
 export function VideoHero() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
 
-  // Cambiar video cada 15 segundos
+  // Fetch travel content from Pixabay
+  const { data: travelContent } = useQuery<TravelContent>({
+    queryKey: ['/api/pixabay/travel-content'],
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    retry: 1,
+  });
+
+  // Use Pixabay videos if available, otherwise fallback
+  const videoSources = travelContent?.videos?.length && travelContent.videos.length > 0 
+    ? travelContent.videos.slice(0, 8) // Limit to 8 videos for performance
+    : fallbackVideoSources;
+
+  // Cambiar video cada 7 segundos
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentVideoIndex((prev) => (prev + 1) % videoSources.length);
       setIsVideoLoaded(false);
-    }, 15000);
+    }, 7000); // Changed from 15000 to 7000 milliseconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [videoSources.length]);
 
   const handleVideoLoad = () => {
     console.log("Video loaded successfully:", videoSources[currentVideoIndex]);

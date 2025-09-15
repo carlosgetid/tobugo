@@ -5,6 +5,7 @@ import { z } from "zod";
 import { insertTripSchema, insertChatSessionSchema, insertReviewSchema, insertSavedTripSchema } from "@shared/schema";
 import { generateItinerary, processConversation, optimizeItinerary, type TravelPreferences } from "./services/gemini";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { pixabayService } from "./pixabayService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -370,6 +371,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Trip removed from saved trips" });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove saved trip", error });
+    }
+  });
+
+  // Pixabay content routes (public)
+  app.get("/api/pixabay/travel-content", async (req, res) => {
+    try {
+      const content = await pixabayService.getTravelContent();
+      res.json(content);
+    } catch (error) {
+      console.error("Error fetching Pixabay content:", error);
+      res.status(500).json({ message: "Failed to fetch travel content", error });
+    }
+  });
+
+  app.get("/api/pixabay/videos", async (req, res) => {
+    try {
+      const query = req.query.q as string || 'travel landscape tourism beautiful destinations';
+      const perPage = parseInt(req.query.per_page as string) || 10;
+      
+      const videos = await pixabayService.searchVideos(query, perPage);
+      res.json({ videos });
+    } catch (error) {
+      console.error("Error fetching Pixabay videos:", error);
+      res.status(500).json({ message: "Failed to fetch videos", error });
+    }
+  });
+
+  app.get("/api/pixabay/images", async (req, res) => {
+    try {
+      const query = req.query.q as string || 'travel landscape tourism beautiful destinations';
+      const perPage = parseInt(req.query.per_page as string) || 10;
+      
+      const images = await pixabayService.searchImages(query, perPage);
+      res.json({ images });
+    } catch (error) {
+      console.error("Error fetching Pixabay images:", error);
+      res.status(500).json({ message: "Failed to fetch images", error });
     }
   });
 
