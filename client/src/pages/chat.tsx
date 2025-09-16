@@ -33,7 +33,11 @@ export default function Chat() {
   });
 
   // Get current chat session with persistent history
-  const { data: chatSession, isLoading: sessionLoading } = useQuery({
+  const { data: chatSession, isLoading: sessionLoading } = useQuery<{
+    id: string;
+    messages?: Array<{id: string, role: string, content: string, timestamp: string}>;
+    status: string;
+  }>({
     queryKey: ['/api/chat', currentSessionId],
     enabled: !!currentSessionId,
   });

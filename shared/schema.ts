@@ -70,8 +70,8 @@ export const trips = pgTable("trips", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
-// Reviews table for user reviews of places
-export const reviews = pgTable("reviews", {
+// Place reviews table for user reviews of places with media uploads
+export const placeReviews = pgTable("place_reviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   placeName: text("place_name").notNull(),
@@ -231,6 +231,19 @@ export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({
   updatedAt: true,
 });
 
+export const insertPlaceReviewSchema = createInsertSchema(placeReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  rating: z.number().min(1, "Rating must be at least 1").max(5, "Rating must be at most 5").int("Rating must be a whole number"),
+});
+
+export const insertSavedItinerarySchema = createInsertSchema(savedItineraries).omit({
+  id: true,
+  downloadedAt: true,
+});
+
 export const insertReviewSchema = createInsertSchema(reviews).omit({
   id: true,
   createdAt: true,
@@ -249,6 +262,10 @@ export type InsertTrip = z.infer<typeof insertTripSchema>;
 export type Trip = typeof trips.$inferSelect;
 export type InsertChatSession = z.infer<typeof insertChatSessionSchema>;
 export type ChatSession = typeof chatSessions.$inferSelect;
+export type InsertPlaceReview = z.infer<typeof insertPlaceReviewSchema>;
+export type PlaceReview = typeof placeReviews.$inferSelect;
+export type InsertSavedItinerary = z.infer<typeof insertSavedItinerarySchema>;
+export type SavedItinerary = typeof savedItineraries.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertSavedTrip = z.infer<typeof insertSavedTripSchema>;

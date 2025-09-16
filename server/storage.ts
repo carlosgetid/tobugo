@@ -1,4 +1,4 @@
-import { users, trips, chatSessions, reviews, savedTrips, reviewHelpfuls, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip } from "@shared/schema";
+import { users, trips, chatSessions, reviews, savedTrips, reviewHelpfuls, placeReviews, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip, type PlaceReview, type InsertPlaceReview } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, avg, sql, gte, lte, ilike } from "drizzle-orm";
 
@@ -40,9 +40,17 @@ export interface IStorage {
   updateReview(id: string, review: Partial<InsertReview>): Promise<Review>;
 
   // Saved Trips
-  getSavedTripsByUserId(userId: string): Promise<SavedTrip[]>;
+  getSavedTripsByUserId(userId: string): Promise<Trip[]>;
   createSavedTrip(savedTrip: InsertSavedTrip): Promise<SavedTrip>;
   deleteSavedTrip(userId: string, tripId: string): Promise<void>;
+
+  // Place Reviews
+  getPlaceReview(id: string): Promise<PlaceReview | undefined>;
+  getPlaceReviewsByUserId(userId: string): Promise<PlaceReview[]>;
+  getPlaceReviewsByLocation(location: string): Promise<PlaceReview[]>;
+  createPlaceReview(review: InsertPlaceReview): Promise<PlaceReview>;
+  updatePlaceReview(id: string, review: Partial<InsertPlaceReview>): Promise<PlaceReview>;
+  deletePlaceReview(id: string): Promise<void>;
 
   // Community functionality
   getCommunityStats(): Promise<CommunityStats>;
@@ -234,22 +242,23 @@ export class DatabaseStorage implements IStorage {
 
   // Saved Trips
   async getSavedTripsByUserId(userId: string): Promise<Trip[]> {
-    const savedTripsWithDetails = await db.select({
-      id: trips.id,
-      title: trips.title,
-      description: trips.description,
-      destination: trips.destination,
-      startDate: trips.startDate,
-      endDate: trips.endDate,
-      budget: trips.budget,
-      currency: trips.currency,
-      isPublic: trips.isPublic,
-      itinerary: trips.itinerary,
-      preferences: trips.preferences,
-      createdAt: trips.createdAt,
-      updatedAt: trips.updatedAt,
-      userId: trips.userId
-    }).from(savedTrips)
+    const savedTripsWithDetails = await db
+      .select({
+        id: trips.id,
+        userId: trips.userId,
+        title: trips.title,
+        destination: trips.destination,
+        startDate: trips.startDate,
+        endDate: trips.endDate,
+        budget: trips.budget,
+        preferences: trips.preferences,
+        itinerary: trips.itinerary,
+        isPublic: trips.isPublic,
+        rating: trips.rating,
+        createdAt: trips.createdAt,
+        updatedAt: trips.updatedAt,
+      })
+      .from(savedTrips)
       .innerJoin(trips, eq(savedTrips.tripId, trips.id))
       .where(eq(savedTrips.userId, userId))
       .orderBy(desc(savedTrips.createdAt));
@@ -346,6 +355,41 @@ export class DatabaseStorage implements IStorage {
       // Re-throw other errors
       throw error;
     }
+  }
+
+  // Place Reviews
+  async getPlaceReview(id: string): Promise<PlaceReview | undefined> {
+    const [review] = await db.select().from(placeReviews).where(eq(placeReviews.id, id));
+    return review || undefined;
+  }
+
+  async getPlaceReviewsByUserId(userId: string): Promise<PlaceReview[]> {
+    return await db.select().from(placeReviews)
+      .where(eq(placeReviews.userId, userId))
+      .orderBy(desc(placeReviews.createdAt));
+  }
+
+  async getPlaceReviewsByLocation(location: string): Promise<PlaceReview[]> {
+    return await db.select().from(placeReviews)
+      .where(ilike(placeReviews.location, `%${location}%`))
+      .orderBy(desc(placeReviews.createdAt));
+  }
+
+  async createPlaceReview(insertPlaceReview: InsertPlaceReview): Promise<PlaceReview> {
+    const [review] = await db.insert(placeReviews).values(insertPlaceReview as typeof placeReviews.$inferInsert).returning();
+    return review;
+  }
+
+  async updatePlaceReview(id: string, updatePlaceReview: Partial<InsertPlaceReview>): Promise<PlaceReview> {
+    const [review] = await db.update(placeReviews)
+      .set({ ...(updatePlaceReview as Partial<typeof placeReviews.$inferInsert>), updatedAt: new Date() })
+      .where(eq(placeReviews.id, id))
+      .returning();
+    return review;
+  }
+
+  async deletePlaceReview(id: string): Promise<void> {
+    await db.delete(placeReviews).where(eq(placeReviews.id, id));
   }
 }
 

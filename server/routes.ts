@@ -2,13 +2,18 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertTripSchema, insertChatSessionSchema, insertReviewSchema, insertSavedTripSchema } from "@shared/schema";
+import { insertTripSchema, insertChatSessionSchema, insertReviewSchema, insertSavedTripSchema, insertPlaceReviewSchema } from "@shared/schema";
 import { generateItinerary, processConversation, optimizeItinerary, type TravelPreferences } from "./services/gemini";
+import { ObjectPermission } from "./objectAcl";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { ObjectStorageService } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
   await setupAuth(app);
+  
+  // Initialize object storage service
+  const objectStorage = new ObjectStorageService();
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -414,6 +419,237 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Trip removed from saved trips" });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove saved trip", error });
+    }
+  });
+
+  // Place Reviews routes
+  // Get all place reviews (public)
+  app.get("/api/place-reviews", async (req, res) => {
+    try {
+      const location = req.query.location as string;
+      const userId = req.query.userId as string;
+      
+      let reviews;
+      if (location) {
+        reviews = await storage.getPlaceReviewsByLocation(location);
+      } else if (userId) {
+        reviews = await storage.getPlaceReviewsByUserId(userId);
+      } else {
+        // Default: Get recent reviews
+        reviews = await storage.getPlaceReviewsByLocation("");
+      }
+      
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get place reviews", error });
+    }
+  });
+
+  // Get single place review (public)
+  app.get("/api/place-reviews/:id", async (req, res) => {
+    try {
+      const review = await storage.getPlaceReview(req.params.id);
+      if (!review) {
+        return res.status(404).json({ message: "Place review not found" });
+      }
+      res.json(review);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get place review", error });
+    }
+  });
+
+  // Create place review (protected)
+  app.post("/api/place-reviews", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const reviewData = insertPlaceReviewSchema.parse({ ...req.body, userId });
+      const review = await storage.createPlaceReview(reviewData);
+      res.json(review);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid place review data", error });
+    }
+  });
+
+  // Update place review (protected)
+  app.put("/api/place-reviews/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const existingReview = await storage.getPlaceReview(req.params.id);
+      
+      if (!existingReview) {
+        return res.status(404).json({ message: "Place review not found" });
+      }
+      
+      // SECURITY: Verify ownership
+      if (existingReview.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden: You can only update your own reviews" });
+      }
+      
+      const reviewData = insertPlaceReviewSchema.partial().omit({ userId: true }).parse(req.body);
+      const review = await storage.updatePlaceReview(req.params.id, reviewData);
+      res.json(review);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update place review", error });
+    }
+  });
+
+  // Delete place review (protected)
+  app.delete("/api/place-reviews/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const existingReview = await storage.getPlaceReview(req.params.id);
+      
+      if (!existingReview) {
+        return res.status(404).json({ message: "Place review not found" });
+      }
+      
+      // SECURITY: Verify ownership
+      if (existingReview.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden: You can only delete your own reviews" });
+      }
+      
+      await storage.deletePlaceReview(req.params.id);
+      res.json({ message: "Place review deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete place review", error });
+    }
+  });
+
+  // Media upload URL generation (protected)
+  app.post("/api/media/upload-url", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const { isPublic = false } = req.body;
+      
+      // Generate upload URL
+      const uploadUrl = await objectStorage.getObjectEntityUploadURL();
+      
+      // Extract object path from upload URL for later reference
+      const urlObj = new URL(uploadUrl);
+      const objectPath = urlObj.pathname;
+      
+      res.json({ 
+        uploadUrl,
+        objectPath,
+        isPublic,
+        instructions: "After upload, call POST /api/place-reviews/:id/media with objectPath to attach"
+      });
+    } catch (error: any) {
+      console.error("Error generating upload URL:", error);
+      
+      // Graceful error handling for missing config
+      if (error.message && error.message.includes("not set")) {
+        return res.status(503).json({ 
+          message: "Object storage not configured", 
+          error: "Please configure object storage environment variables",
+          details: error.message
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to generate upload URL", error: error.message || error });
+    }
+  });
+
+  // Attach media to place review with ACL policy (protected)
+  app.post("/api/place-reviews/:id/media", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const reviewId = req.params.id;
+      const { objectPath, isPublic = false } = req.body;
+      
+      if (!objectPath) {
+        return res.status(400).json({ message: "Object path is required" });
+      }
+      
+      // Verify ownership of the place review
+      const existingReview = await storage.getPlaceReview(reviewId);
+      if (!existingReview) {
+        return res.status(404).json({ message: "Place review not found" });
+      }
+      
+      if (existingReview.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden: You can only attach media to your own reviews" });
+      }
+      
+      // Set ACL policy for the uploaded object
+      const aclPolicy = {
+        visibility: isPublic ? "public" : "private" as "public" | "private",
+        owner: userId,
+        aclRules: []
+      };
+      
+      const normalizedPath = await objectStorage.trySetObjectEntityAclPolicy(objectPath, aclPolicy);
+      
+      // Update place review with new media URL
+      const currentMediaUrls = existingReview.mediaUrls || [];
+      const updatedMediaUrls = [...currentMediaUrls, normalizedPath];
+      
+      const updatedReview = await storage.updatePlaceReview(reviewId, {
+        mediaUrls: updatedMediaUrls
+      });
+      
+      res.json({ 
+        success: true,
+        review: updatedReview,
+        attachedMedia: normalizedPath
+      });
+    } catch (error: any) {
+      console.error("Error attaching media to place review:", error);
+      
+      if (error.message && error.message.includes("not set")) {
+        return res.status(503).json({ 
+          message: "Object storage not configured",
+          error: "Please configure object storage environment variables"
+        });
+      }
+      
+      res.status(500).json({ message: "Failed to attach media", error: error.message || error });
+    }
+  });
+
+  // Media serving route with ACL enforcement (public)
+  app.get("/objects/*", async (req, res) => {
+    try {
+      // Graceful handling for missing object storage config
+      try {
+        // Use req.path to get full path including /objects/ prefix
+        const file = await objectStorage.getObjectEntityFile(req.path);
+        
+        // Get user ID from authenticated request (optional)
+        const userId = req.user ? (req.user as any).claims.sub : undefined;
+        
+        // CRITICAL: Enforce ACL before serving object
+        const canRead = await objectStorage.canAccessObjectEntity({
+          userId,
+          objectFile: file,
+          requestedPermission: ObjectPermission.READ
+        });
+        
+        if (!canRead) {
+          console.log(`ACL: Access denied for user ${userId || 'anonymous'} to object ${req.path}`);
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        
+        // ACL check passed - serve object
+        await objectStorage.downloadObject(file, res);
+      } catch (configError: any) {
+        if (configError.message && configError.message.includes("not set")) {
+          console.error("Object storage config error:", configError.message);
+          return res.status(503).json({ 
+            message: "Object storage not configured",
+            error: "Service temporarily unavailable"
+          });
+        }
+        throw configError;
+      }
+    } catch (error: any) {
+      // Properly handle ObjectNotFoundError
+      if (error.name === "ObjectNotFoundError") {
+        return res.status(404).json({ message: "Object not found" });
+      }
+      
+      console.error("Error serving object:", error);
+      return res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
