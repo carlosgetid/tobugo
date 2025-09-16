@@ -13,13 +13,14 @@ export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(params?.id || null);
   const [generatedItinerary, setGeneratedItinerary] = useState(null);
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [chatHistory, setChatHistory] = useState<Array<{id: string, role: string, content: string, timestamp: string}>>([]);
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Create new chat session
   const createSessionMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/chat", {
-        userId: "temp-user", // TODO: Replace with actual user ID from auth
+        userId: user?.id,
         messages: [],
         status: "active"
       });
@@ -31,11 +32,18 @@ export default function Chat() {
     },
   });
 
-  // Get current chat session
+  // Get current chat session with persistent history
   const { data: chatSession, isLoading: sessionLoading } = useQuery({
     queryKey: ['/api/chat', currentSessionId],
     enabled: !!currentSessionId,
   });
+
+  // Update chat history when session data changes
+  useEffect(() => {
+    if (chatSession?.messages) {
+      setChatHistory(chatSession.messages);
+    }
+  }, [chatSession]);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -73,7 +81,7 @@ export default function Chat() {
   const saveTripMutation = useMutation({
     mutationFn: async ({ itinerary, preferences }: { itinerary: any, preferences: any }) => {
       const tripData = {
-        userId: "temp-user", // TODO: Replace with actual user ID from auth
+        userId: user?.id,
         title: `Viaje a ${preferences.destination}`,
         destination: preferences.destination,
         startDate: preferences.startDate,

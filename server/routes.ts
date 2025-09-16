@@ -70,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user's trips (authenticated)
   app.get("/api/trips/user", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any).claims.sub;
       const trips = await storage.getTripsByUserId(userId);
       res.json(trips);
     } catch (error) {
@@ -80,7 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/trips/user/:userId", isAuthenticated, async (req, res) => {
     try {
-      const requestingUserId = req.user.claims.sub;
+      const requestingUserId = (req.user as any).claims.sub;
       const targetUserId = req.params.userId;
       
       // Security: Only allow users to access their own trips
@@ -381,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user's saved trips (authenticated)
   app.get("/api/trips/saved", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any).claims.sub;
       const savedTrips = await storage.getSavedTripsByUserId(userId);
       res.json(savedTrips);
     } catch (error) {
@@ -444,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reviews/:reviewId/helpful", isAuthenticated, async (req, res) => {
     try {
       const reviewId = req.params.reviewId;
-      const userId = req.user.claims.sub;
+      const userId = (req.user as any).claims.sub;
       const review = await storage.incrementReviewHelpful(reviewId, userId);
       
       if (review === null) {

@@ -5,8 +5,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import CommunityCard from "@/components/community-card";
-import { Users, TrendingUp, MessageSquare, ThumbsUp, Calendar, DollarSign, Star, Plus, MessageCircle } from "lucide-react";
+import { Users, TrendingUp, MessageSquare, ThumbsUp, Calendar, DollarSign, Star, Plus, MessageCircle, Search, Filter, X } from "lucide-react";
 
 // Types for API responses
 interface CommunityStats {
@@ -37,6 +39,17 @@ interface ReviewWithUser {
 export default function Community() {
   const [activeTab, setActiveTab] = useState("itinerarios");
   const { toast } = useToast();
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    destination: "",
+    minBudget: "",
+    maxBudget: "",
+    minDuration: "",
+    maxDuration: "",
+    travelStyle: ""
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   // Mutation for saving trips to user's itinerary
   const saveToItineraryMutation = useMutation({
@@ -67,9 +80,19 @@ export default function Community() {
     saveToItineraryMutation.mutate(tripId);
   };
 
-  // Get public trips
+  // Get public trips with filters
   const { data: publicTrips, isLoading: tripsLoading } = useQuery({
-    queryKey: ['/api/trips/public'],
+    queryKey: ['/api/trips/public', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+      const url = params.toString() ? `/api/trips/public?${params}` : '/api/trips/public';
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch trips');
+      return response.json();
+    },
   });
 
   // Get community statistics and reviews
@@ -207,6 +230,105 @@ export default function Community() {
         </TabsList>
 
         <TabsContent value="itinerarios" className="space-y-6">
+          {/* Advanced Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar destino..."
+                value={filters.destination}
+                onChange={(e) => setFilters({...filters, destination: e.target.value})}
+                className="pl-10"
+                data-testid="input-search-destination"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="shrink-0"
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros {showFilters && <X className="h-4 w-4 ml-2" />}
+            </Button>
+            {Object.values(filters).some(v => v) && (
+              <Button
+                variant="ghost"
+                onClick={() => setFilters({destination: "", minBudget: "", maxBudget: "", minDuration: "", maxDuration: "", travelStyle: ""})}
+                className="shrink-0"
+                data-testid="button-clear-filters"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+
+          {showFilters && (
+            <Card className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Presupuesto Mínimo</label>
+                  <Input
+                    type="number"
+                    placeholder="$500"
+                    value={filters.minBudget}
+                    onChange={(e) => setFilters({...filters, minBudget: e.target.value})}
+                    data-testid="input-min-budget"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Presupuesto Máximo</label>
+                  <Input
+                    type="number"
+                    placeholder="$5000"
+                    value={filters.maxBudget}
+                    onChange={(e) => setFilters({...filters, maxBudget: e.target.value})}
+                    data-testid="input-max-budget"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Duración Mínima (días)</label>
+                  <Input
+                    type="number"
+                    placeholder="3"
+                    value={filters.minDuration}
+                    onChange={(e) => setFilters({...filters, minDuration: e.target.value})}
+                    data-testid="input-min-duration"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Duración Máxima (días)</label>
+                  <Input
+                    type="number"
+                    placeholder="21"
+                    value={filters.maxDuration}
+                    onChange={(e) => setFilters({...filters, maxDuration: e.target.value})}
+                    data-testid="input-max-duration"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="text-sm font-medium mb-2 block">Tipo de Viaje</label>
+                <Select value={filters.travelStyle} onValueChange={(value) => setFilters({...filters, travelStyle: value})}>
+                  <SelectTrigger data-testid="select-travel-style">
+                    <SelectValue placeholder="Seleccionar estilo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="cultural">Cultural</SelectItem>
+                    <SelectItem value="aventura">Aventura</SelectItem>
+                    <SelectItem value="relajacion">Relajación</SelectItem>
+                    <SelectItem value="gastronomico">Gastronómico</SelectItem>
+                    <SelectItem value="deportes">Deportes</SelectItem>
+                    <SelectItem value="familiar">Familiar</SelectItem>
+                    <SelectItem value="romantico">Romántico</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </Card>
+          )}
+
           {tripsLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, index) => (
