@@ -70,6 +70,36 @@ export const trips = pgTable("trips", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Reviews table for user reviews of places
+export const reviews = pgTable("reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  placeName: text("place_name").notNull(),
+  location: text("location").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  mediaUrls: jsonb("media_urls").$type<string[]>().default([]), // Photo/video URLs
+  tripId: varchar("trip_id").references(() => trips.id), // Optional link to trip
+  isVerified: boolean("is_verified").default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Saved itineraries for users who download PDFs
+export const savedItineraries = pgTable("saved_itineraries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  tripId: varchar("trip_id").notNull().references(() => trips.id),
+  savedPreferences: jsonb("saved_preferences").$type<{
+    destinations?: string[];
+    budgetRange?: { min: number; max: number };
+    preferredActivities?: string[];
+    travelStyle?: string;
+    accommodationType?: string;
+  }>(),
+  downloadedAt: timestamp("downloaded_at").default(sql`now()`),
+});
+
 export const chatSessions = pgTable("chat_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id"),
