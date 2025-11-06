@@ -64,4 +64,39 @@ The project follows a monorepo structure with clear separation between client, s
 ### PDF Generation
 - **jsPDF**: Client-side PDF generation for itinerary exports
 
+### Payment Processing
+- **Mercado Pago**: LATAM payment gateway for checkout and subscription processing
+- Configured for Uruguay/LATAM markets with UYU currency support
+- Pricing: 80 UYU (≈$2 USD) for premium itinerary PDFs
+
 The architecture prioritizes type safety, developer experience, and scalability while maintaining a clean separation of concerns between different application layers.
+
+## Design System
+
+### Color Palette
+The platform uses a sophisticated color system optimized for travel and exploration:
+- **Ocean Blue**: Primary brand color (HSL 195° 85% 45%) for trust and adventure
+- **Coral Accent**: Secondary accent (HSL 14° 91% 60%) for CTAs and highlights
+- **Sand Neutrals**: Light backgrounds (HSL 40° 40% 97%) for warmth
+- **Slate Darks**: Dark mode backgrounds (HSL 222° 47% 11%) with blue undertones
+- Full light/dark mode support with semantic color tokens
+
+### Typography
+- **Headings**: Playfair Display (elegant serif for travel luxury)
+- **Body**: DM Sans (clean sans-serif for readability)
+- **Scale**: 64/48/36/24/18/16/14/12px responsive hierarchy
+- Professional weight distribution (400 body, 500 medium, 600 semibold, 700 bold)
+
+### Component Design
+- **Navbar**: Glassmorphism sticky header with backdrop blur, gradient logo, Sheet drawer for mobile navigation
+- **Touch Targets**: Minimum 44px for mobile accessibility
+- **Spacing**: 8px base rhythm (4/8/12/16/24/32/48/64/96px scale)
+- **Borders**: Subtle sand-200/slate-700 with rounded corners (8/12/16px radius)
+- **Shadows**: Layered shadow system for depth and elevation
+
+### Design Principles
+- Mobile-first responsive design
+- WCAG 2.1 AA accessibility standards
+- Consistent visual language across all components
+- Performance-optimized animations and transitions
+- Professional travel industry aesthetics
