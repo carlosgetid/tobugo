@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, Sparkles } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
@@ -16,6 +17,7 @@ export default function Chat() {
   const [savedTripId, setSavedTripId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<Array<{id: string, role: string, content: string, timestamp: string}>>([]);
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   // Create new chat session
   const createSessionMutation = useMutation({
@@ -52,20 +54,46 @@ export default function Chat() {
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, tempId }: { message: string, tempId: string }) => {
       if (!currentSessionId) throw new Error("No active session");
       
       const response = await apiRequest("POST", `/api/chat/${currentSessionId}/message`, {
         message
       });
-      return response.json();
+      return { data: await response.json(), tempId };
     },
-    onSuccess: (data) => {
+    onMutate: async ({ message, tempId }) => {
+      // Optimistic update: add user message immediately to chat history
+      const userMessage = {
+        id: tempId,
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+      };
+      setChatHistory(prev => [...prev, userMessage]);
+      
+      return { tempId };
+    },
+    onSuccess: ({ data }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/chat', currentSessionId] });
       
       if (data.shouldGenerateItinerary && data.extractedPreferences) {
         generateItineraryMutation.mutate(data.extractedPreferences);
       }
+    },
+    onError: (error, variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.tempId) {
+        setChatHistory(prev => prev.filter(msg => msg.id !== context.tempId));
+      }
+      console.error("Error sending message:", error);
+      
+      // Notify user
+      toast({
+        title: "Error al enviar mensaje",
+        description: "No se pudo enviar tu mensaje. Por favor intenta de nuevo.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -137,7 +165,8 @@ export default function Chat() {
 
   const handleSendMessage = (message: string) => {
     if (currentSessionId) {
-      sendMessageMutation.mutate(message);
+      const tempId = `temp-${Date.now()}`;
+      sendMessageMutation.mutate({ message, tempId });
     }
   };
 
@@ -174,7 +203,7 @@ export default function Chat() {
             {/* Chat Interface */}
             <div className="lg:col-span-2">
               <ChatInterface
-                session={chatSession as any}
+                session={{ ...chatSession, messages: chatHistory } as any}
                 onSendMessage={handleSendMessage}
                 isLoading={sendMessageMutation.isPending}
               />
