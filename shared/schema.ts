@@ -144,12 +144,33 @@ export const reviewHelpfuls = pgTable("review_helpfuls", {
   uniqueIndex("unique_user_review_helpful").on(table.userId, table.reviewId)
 ]);
 
+// Purchases table for Mercado Pago transactions
+export const purchases = pgTable("purchases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  tripId: varchar("trip_id").notNull().references(() => trips.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default('UYU').notNull(),
+  status: text("status").default('pending').notNull(), // pending, approved, rejected, cancelled
+  mercadoPagoPreferenceId: varchar("mercadopago_preference_id"),
+  mercadoPagoPaymentId: varchar("mercadopago_payment_id"),
+  mercadoPagoExternalReference: varchar("mercadopago_external_reference"),
+  paymentMethod: text("payment_method"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  paidAt: timestamp("paid_at"),
+}, (table) => [
+  index("idx_purchases_user_id").on(table.userId),
+  index("idx_purchases_trip_id").on(table.tripId),
+  index("idx_purchases_status").on(table.status)
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   trips: many(trips),
   chatSessions: many(chatSessions),
   reviews: many(reviews),
   savedTrips: many(savedTrips),
+  purchases: many(purchases),
 }));
 
 export const tripsRelations = relations(trips, ({ one, many }) => ({
@@ -157,6 +178,7 @@ export const tripsRelations = relations(trips, ({ one, many }) => ({
   chatSessions: many(chatSessions),
   reviews: many(reviews),
   savedTrips: many(savedTrips),
+  purchases: many(purchases),
 }));
 
 export const chatSessionsRelations = relations(chatSessions, ({ one }) => ({
@@ -178,6 +200,11 @@ export const savedTripsRelations = relations(savedTrips, ({ one }) => ({
 export const reviewHelpfulsRelations = relations(reviewHelpfuls, ({ one }) => ({
   user: one(users, { fields: [reviewHelpfuls.userId], references: [users.id] }),
   review: one(reviews, { fields: [reviewHelpfuls.reviewId], references: [reviews.id] }),
+}));
+
+export const purchasesRelations = relations(purchases, ({ one }) => ({
+  user: one(users, { fields: [purchases.userId], references: [users.id] }),
+  trip: one(trips, { fields: [purchases.tripId], references: [trips.id] }),
 }));
 
 // Insert schemas
@@ -254,6 +281,12 @@ export const insertSavedTripSchema = createInsertSchema(savedTrips).omit({
   createdAt: true,
 });
 
+export const insertPurchaseSchema = createInsertSchema(purchases).omit({
+  id: true,
+  createdAt: true,
+  paidAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
@@ -270,3 +303,5 @@ export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertSavedTrip = z.infer<typeof insertSavedTripSchema>;
 export type SavedTrip = typeof savedTrips.$inferSelect;
+export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
+export type Purchase = typeof purchases.$inferSelect;

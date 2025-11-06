@@ -1,4 +1,4 @@
-import { users, trips, chatSessions, reviews, savedTrips, reviewHelpfuls, placeReviews, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip, type PlaceReview, type InsertPlaceReview } from "@shared/schema";
+import { users, trips, chatSessions, reviews, savedTrips, reviewHelpfuls, placeReviews, purchases, type User, type InsertUser, type UpsertUser, type Trip, type InsertTrip, type ChatSession, type InsertChatSession, type Review, type InsertReview, type SavedTrip, type InsertSavedTrip, type PlaceReview, type InsertPlaceReview, type Purchase, type InsertPurchase } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, avg, sql, gte, lte, ilike } from "drizzle-orm";
 
@@ -56,6 +56,14 @@ export interface IStorage {
   getCommunityStats(): Promise<CommunityStats>;
   getRecentReviews(limit: number): Promise<ReviewWithUser[]>;
   incrementReviewHelpful(reviewId: string, userId: string): Promise<Review | null>;
+
+  // Purchases
+  getPurchase(id: string): Promise<Purchase | undefined>;
+  getPurchasesByUserId(userId: string): Promise<Purchase[]>;
+  getPurchaseByTripAndUser(tripId: string, userId: string): Promise<Purchase | undefined>;
+  createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  updatePurchase(id: string, purchase: Partial<InsertPurchase>): Promise<Purchase>;
+  updatePurchaseByExternalReference(externalReference: string, purchase: Partial<InsertPurchase>): Promise<Purchase | undefined>;
 }
 
 // Community stats type
@@ -355,6 +363,51 @@ export class DatabaseStorage implements IStorage {
       // Re-throw other errors
       throw error;
     }
+  }
+
+  // Purchases
+  async getPurchase(id: string): Promise<Purchase | undefined> {
+    const [purchase] = await db.select().from(purchases).where(eq(purchases.id, id));
+    return purchase || undefined;
+  }
+
+  async getPurchasesByUserId(userId: string): Promise<Purchase[]> {
+    return db
+      .select()
+      .from(purchases)
+      .where(eq(purchases.userId, userId))
+      .orderBy(desc(purchases.createdAt));
+  }
+
+  async getPurchaseByTripAndUser(tripId: string, userId: string): Promise<Purchase | undefined> {
+    const [purchase] = await db
+      .select()
+      .from(purchases)
+      .where(and(eq(purchases.tripId, tripId), eq(purchases.userId, userId), eq(purchases.status, 'approved')));
+    return purchase || undefined;
+  }
+
+  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    const [newPurchase] = await db.insert(purchases).values(purchase).returning();
+    return newPurchase;
+  }
+
+  async updatePurchase(id: string, purchase: Partial<InsertPurchase>): Promise<Purchase> {
+    const [updated] = await db
+      .update(purchases)
+      .set(purchase)
+      .where(eq(purchases.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updatePurchaseByExternalReference(externalReference: string, purchase: Partial<InsertPurchase>): Promise<Purchase | undefined> {
+    const [updated] = await db
+      .update(purchases)
+      .set(purchase)
+      .where(eq(purchases.mercadoPagoExternalReference, externalReference))
+      .returning();
+    return updated || undefined;
   }
 
   // Place Reviews

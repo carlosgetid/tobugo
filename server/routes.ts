@@ -7,6 +7,7 @@ import { generateItinerary, processConversation, optimizeItinerary, type TravelP
 import { ObjectPermission } from "./objectAcl";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService } from "./objectStorage";
+import { createPaymentPreference, getPaymentInfo } from "./mercadopago";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth middleware
@@ -419,6 +420,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Trip removed from saved trips" });
     } catch (error) {
       res.status(500).json({ message: "Failed to remove saved trip", error });
+    }
+  });
+
+  // Payment routes with Mercado Pago
+  app.post("/api/payments/create-preference", isAuthenticated, async (req, res) => {
+    try {
+      const { tripId, amount, currency = 'UYU' } = req.body;
+      const userId = (req.user as any).claims.sub;
+
+      // Get trip details
+      const trip = await storage.getTrip(tripId);
+      if (!trip) {
+        return res.status(404).json({ message: "Trip not found" });
+      }
+
+      // Check if user already purchased this trip
+      const existingPurchase = await storage.getPurchaseByTripAndUser(tripId, userId);
+      if (existingPurchase) {
+        return res.json({ 
+          message: "Already purchased", 
+          preferenceId: existingPurchase.mercadoPagoPreferenceId,
+          alreadyPurchased: true 
+        });
+      }
+
+      // Create external reference for tracking
+      const externalReference = `tobugo-${tripId}-${userId}-${Date.now()}`;
+
+      // Create Mercado Pago preference
+      const preference = await createPaymentPreference({
+        title: `Descarga de Itinerario: ${trip.title}`,
+        description: `Acceso completo al itinerario de ${trip.destination}`,
+        quantity: 1,
+        unitPrice: Number(amount) || 99, // Default price in UYU
+        currency,
+        externalReference,
+        backUrls: {
+          success: `${req.protocol}://${req.get('host')}/payment/success`,
+          failure: `${req.protocol}://${req.get('host')}/payment/failure`,
+          pending: `${req.protocol}://${req.get('host')}/payment/pending`,
+        },
+        autoReturn: 'approved',
+        notificationUrl: `${req.protocol}://${req.get('host')}/api/payments/webhook`,
+        payer: {
+          email: (req.user as any).claims.email,
+          firstName: (req.user as any).claims.firstName,
+          lastName: (req.user as any).claims.lastName,
+        }
+      });
+
+      // Create purchase record in database
+      const purchase = await storage.createPurchase({
+        userId,
+        tripId,
+        amount: String(Number(amount) || 99),
+        currency,
+        status: 'pending',
+        mercadoPagoPreferenceId: preference.id || '',
+        mercadoPagoExternalReference: externalReference,
+      });
+
+      res.json({ 
+        preferenceId: preference.id,
+        initPoint: preference.initPoint,
+        sandboxInitPoint: preference.sandboxInitPoint,
+        purchaseId: purchase.id
+      });
+    } catch (error: any) {
+      console.error("Payment preference creation error:", error);
+      res.status(500).json({ message: "Failed to create payment preference", error: error.message });
+    }
+  });
+
+  // Webhook to receive Mercado Pago notifications
+  app.post("/api/payments/webhook", async (req, res) => {
+    try {
+      const { type, data } = req.body;
+
+      // Only process payment notifications
+      if (type === 'payment') {
+        const paymentId = data.id;
+        
+        // Get payment information from Mercado Pago
+        const paymentInfo = await getPaymentInfo(paymentId);
+        
+        if (paymentInfo) {
+          const externalReference = paymentInfo.external_reference;
+          const status = paymentInfo.status;
+
+          // Map Mercado Pago status to our status
+          let purchaseStatus = 'pending';
+          if (status === 'approved') {
+            purchaseStatus = 'approved';
+          } else if (status === 'rejected') {
+            purchaseStatus = 'rejected';
+          } else if (status === 'cancelled') {
+            purchaseStatus = 'cancelled';
+          }
+
+          // Update purchase in database
+          if (externalReference) {
+            await storage.updatePurchaseByExternalReference(externalReference, {
+              status: purchaseStatus,
+              mercadoPagoPaymentId: String(paymentId),
+              paymentMethod: paymentInfo.payment_type_id,
+              paidAt: status === 'approved' ? new Date() : undefined,
+            });
+          }
+        }
+      }
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("Webhook processing error:", error);
+      res.status(500).json({ message: "Webhook processing failed", error: error.message });
+    }
+  });
+
+  // Check if user has purchased a trip
+  app.get("/api/payments/check/:tripId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const tripId = req.params.tripId;
+
+      const purchase = await storage.getPurchaseByTripAndUser(tripId, userId);
+      
+      res.json({ 
+        hasPurchased: !!purchase,
+        purchase: purchase || null
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check purchase status", error });
+    }
+  });
+
+  // Get user's purchase history
+  app.get("/api/payments/history", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).claims.sub;
+      const purchases = await storage.getPurchasesByUserId(userId);
+      
+      res.json(purchases);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get purchase history", error });
     }
   });
 
