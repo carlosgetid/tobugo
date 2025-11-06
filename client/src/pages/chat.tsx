@@ -89,8 +89,8 @@ export default function Chat() {
         userId: user?.id,
         title: `Viaje a ${preferences.destination}`,
         destination: preferences.destination,
-        startDate: preferences.startDate,
-        endDate: preferences.endDate,
+        startDate: new Date(preferences.startDate).toISOString(),
+        endDate: new Date(preferences.endDate).toISOString(),
         budget: preferences.budget || itinerary.totalCost,
         preferences: {
           accommodation: preferences.accommodationType,

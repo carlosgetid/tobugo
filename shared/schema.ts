@@ -228,6 +228,15 @@ export const insertTripSchema = createInsertSchema(trips).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  budget: z.union([
+    z.number(),
+    z.string().transform((val) => {
+      const cleaned = val.replace(/[^0-9.-]/g, '');
+      return cleaned ? parseFloat(cleaned) : undefined;
+    })
+  ]).optional(),
   itinerary: z.object({
     days: z.array(z.object({
       date: z.string(),

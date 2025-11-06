@@ -115,10 +115,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trips", isAuthenticated, async (req, res) => {
     try {
+      console.log("POST /api/trips received data:", JSON.stringify(req.body, null, 2));
       const tripData = insertTripSchema.parse(req.body);
+      console.log("POST /api/trips validation passed, creating trip...");
       const trip = await storage.createTrip(tripData);
       res.json(trip);
     } catch (error) {
+      console.error("POST /api/trips validation error:", error);
       res.status(400).json({ message: "Invalid trip data", error });
     }
   });
