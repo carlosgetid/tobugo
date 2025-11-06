@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import userVideo1 from "@assets/230575_small_1757936852080.mp4";
 import userVideo2 from "@assets/12584129_1080_1920_60fps_1757937267745.mp4";
 import userVideo3 from "@assets/16119043-hd_1080_1920_30fps (1)_1757937270131.mp4";
@@ -16,6 +17,16 @@ const videoSources = [
 export function VideoHero() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [, setLocation] = useLocation();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const handleStartPlanning = () => {
+    if (isAuthenticated) {
+      setLocation("/chat");
+    } else {
+      window.location.href = "/api/login";
+    }
+  };
 
   // Cambiar video cada 7 segundos
   useEffect(() => {
@@ -71,16 +82,16 @@ export function VideoHero() {
             Deja que nuestra inteligencia artificial te ayude a crear itinerarios personalizados, 
             encontrar los mejores precios y conectar con otros viajeros.
           </p>
-          <Link href="/chat">
-            <Button 
-              size="lg" 
-              className="bg-white text-primary px-8 py-4 text-lg font-semibold hover:bg-white/95 transition-colors"
-              data-testid="button-start-planning"
-            >
-              Comenzar a Planificar
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <Button 
+            size="lg" 
+            className="bg-white text-primary px-8 py-4 text-lg font-semibold hover:bg-white/95 transition-colors"
+            data-testid="button-start-planning"
+            onClick={handleStartPlanning}
+            disabled={isLoading}
+          >
+            Comenzar a Planificar
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
       </div>
 

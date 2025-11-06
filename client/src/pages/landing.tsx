@@ -74,7 +74,7 @@ export default function Landing() {
               variant="secondary" 
               className="text-lg px-8 py-4"
               onClick={() => window.location.href = "/api/login"}
-              data-testid="button-start-planning"
+              data-testid="button-cta-login"
             >
               Iniciar Sesión para Planificar
               <ArrowRight className="ml-2 h-5 w-5" />

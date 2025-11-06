@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { generatePDF } from "@/lib/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface Purchase {
   id: string;
@@ -27,6 +28,7 @@ interface Purchase {
 
 export default function PurchaseHistory() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: purchases, isLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/payments/history"],
@@ -123,7 +125,7 @@ export default function PurchaseHistory() {
           <p className="text-muted-foreground mb-6">
             Cuando compres un itinerario para descargar, aparecerá aquí
           </p>
-          <Button onClick={() => window.location.href = "/chat"} data-testid="button-start-planning">
+          <Button onClick={() => setLocation("/chat")} data-testid="button-create-new-trip">
             Comenzar a Planificar
           </Button>
         </CardContent>
@@ -209,7 +211,7 @@ export default function PurchaseHistory() {
                 {(purchase.status === "rejected" || purchase.status === "cancelled") && (
                   <Button
                     variant="outline"
-                    onClick={() => window.location.href = `/itinerarios?tripId=${purchase.tripId}`}
+                    onClick={() => setLocation(`/itinerarios?tripId=${purchase.tripId}`)}
                     data-testid={`button-retry-${purchase.id}`}
                   >
                     Intentar de Nuevo
