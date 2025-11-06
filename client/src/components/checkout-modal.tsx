@@ -26,11 +26,11 @@ export default function CheckoutModal({ isOpen, onClose, trip, onPurchaseComplet
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const PRICE_UYU = 99;
-  const PRICE_USD = 2.50;
+  const PRICE_UYU = 80; // Approximately 2 USD
+  const PRICE_USD = 2.00;
 
   // Check if already purchased
-  const { data: purchaseCheck } = useQuery({
+  const { data: purchaseCheck } = useQuery<{ hasPurchased: boolean }>({
     queryKey: ["/api/payments/check", trip.id],
     enabled: isOpen && !!trip.id,
   });
