@@ -1,75 +1,141 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: hsl(210, 40%, 98%);
-  --foreground: hsl(222, 47%, 11%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(222, 47%, 11%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(222, 47%, 11%);
-  --primary: hsl(200, 98%, 50%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(158, 64%, 52%);
-  --secondary-foreground: hsl(0, 0%, 100%);
-  --muted: hsl(210, 40%, 96%);
-  --muted-foreground: hsl(215, 16%, 47%);
-  --accent: hsl(24, 95%, 53%);
-  --accent-foreground: hsl(0, 0%, 100%);
-  --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(214, 32%, 91%);
-  --input: hsl(214, 32%, 91%);
-  --ring: hsl(200, 98%, 50%);
-  --chart-1: hsl(200, 98%, 50%);
-  --chart-2: hsl(158, 64%, 52%);
-  --chart-3: hsl(24, 95%, 53%);
-  --chart-4: hsl(147.1429, 78.5047%, 41.9608%);
-  --chart-5: hsl(341.4894, 75.2000%, 50.9804%);
-  --sidebar: hsl(0, 0%, 100%);
-  --sidebar-foreground: hsl(222, 47%, 11%);
-  --sidebar-primary: hsl(200, 98%, 50%);
-  --sidebar-primary-foreground: hsl(0, 0%, 100%);
-  --sidebar-accent: hsl(210, 40%, 96%);
-  --sidebar-accent-foreground: hsl(200, 98%, 50%);
-  --sidebar-border: hsl(214, 32%, 91%);
-  --sidebar-ring: hsl(200, 98%, 50%);
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  /* Brand Colors - Light Mode */
+  --ocean-deep: 220 40% 20%;
+  --ocean-primary: 195 85% 45%;
+  --coral-accent: 15 90% 60%;
+  
+  /* Neutrals - Light Mode */
+  --sand-50: 40 40% 97%;
+  --sand-100: 40 25% 92%;
+  --sand-200: 40 15% 85%;
+  --sand-300: 40 10% 70%;
+  --sand-400: 40 9% 60%;
+  --sand-500: 40 8% 50%;
+  --sand-600: 40 9% 40%;
+  --sand-700: 40 10% 30%;
+  --sand-900: 40 15% 15%;
+  
+  /* Semantic Colors - Light Mode */
+  --success: 142 76% 36%;
+  --warning: 38 92% 50%;
+  --error: 0 84% 60%;
+  --info: 217 91% 60%;
+  
+  /* shadcn/ui compatibility - Light Mode */
+  --background: hsl(var(--sand-50));
+  --foreground: hsl(var(--sand-900));
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(var(--sand-900));
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(var(--sand-900));
+  --primary: hsl(var(--ocean-primary));
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(var(--coral-accent));
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(var(--sand-100));
+  --muted-foreground: hsl(var(--sand-500));
+  --accent: hsl(var(--coral-accent));
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive: hsl(var(--error));
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(var(--sand-200));
+  --input: hsl(var(--sand-200));
+  --ring: hsl(var(--ocean-primary));
+  
+  /* Charts */
+  --chart-1: hsl(var(--ocean-primary));
+  --chart-2: hsl(var(--coral-accent));
+  --chart-3: hsl(var(--success));
+  --chart-4: hsl(var(--warning));
+  --chart-5: hsl(var(--info));
+  
+  /* Sidebar */
+  --sidebar-background: hsl(0 0% 100%);
+  --sidebar: hsl(0 0% 100%);
+  --sidebar-foreground: hsl(var(--sand-900));
+  --sidebar-primary: hsl(var(--ocean-primary));
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(var(--sand-100));
+  --sidebar-accent-foreground: hsl(var(--ocean-primary));
+  --sidebar-border: hsl(var(--sand-200));
+  --sidebar-ring: hsl(var(--ocean-primary));
+  
+  /* Typography */
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+  
+  /* Border radius */
   --radius: 0.75rem;
 }
 
 .dark {
-  --background: hsl(222, 47%, 11%);
-  --foreground: hsl(210, 40%, 98%);
-  --card: hsl(222, 84%, 4.9%);
-  --card-foreground: hsl(210, 40%, 98%);
-  --popover: hsl(222, 84%, 4.9%);
-  --popover-foreground: hsl(210, 40%, 98%);
-  --primary: hsl(200, 98%, 50%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(158, 64%, 52%);
-  --secondary-foreground: hsl(0, 0%, 100%);
-  --muted: hsl(217, 32%, 17%);
-  --muted-foreground: hsl(215, 16%, 47%);
-  --accent: hsl(24, 95%, 53%);
-  --accent-foreground: hsl(0, 0%, 100%);
-  --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(217, 32%, 17%);
-  --input: hsl(217, 32%, 17%);
-  --ring: hsl(200, 98%, 50%);
-  --sidebar: hsl(222, 84%, 4.9%);
-  --sidebar-foreground: hsl(210, 40%, 98%);
-  --sidebar-primary: hsl(200, 98%, 50%);
-  --sidebar-primary-foreground: hsl(0, 0%, 100%);
-  --sidebar-accent: hsl(217, 32%, 17%);
-  --sidebar-accent-foreground: hsl(200, 98%, 50%);
-  --sidebar-border: hsl(217, 32%, 17%);
-  --sidebar-ring: hsl(200, 98%, 50%);
+  /* Brand Colors - Dark Mode */
+  --ocean-deep-dark: 220 35% 12%;
+  --ocean-primary-dark: 195 80% 50%;
+  --coral-accent-dark: 15 85% 65%;
+  
+  /* Neutrals - Dark Mode */
+  --slate-900: 220 20% 10%;
+  --slate-800: 220 18% 15%;
+  --slate-700: 220 15% 25%;
+  --slate-600: 220 12% 35%;
+  --slate-500: 220 10% 50%;
+  --slate-400: 220 8% 65%;
+  --slate-300: 220 10% 75%;
+  --slate-100: 220 15% 90%;
+  
+  /* Semantic Colors - Dark Mode */
+  --success-dark: 142 71% 45%;
+  --warning-dark: 38 90% 60%;
+  --error-dark: 0 84% 65%;
+  --info-dark: 217 91% 65%;
+  
+  /* Charts - Dark Mode */
+  --chart-1: hsl(var(--ocean-primary-dark));
+  --chart-2: hsl(var(--coral-accent-dark));
+  --chart-3: hsl(var(--success-dark));
+  --chart-4: hsl(var(--warning-dark));
+  --chart-5: hsl(var(--info-dark));
+  
+  /* shadcn/ui compatibility - Dark Mode */
+  --background: hsl(var(--slate-900));
+  --foreground: hsl(var(--slate-100));
+  --card: hsl(var(--slate-800));
+  --card-foreground: hsl(var(--slate-100));
+  --popover: hsl(var(--slate-800));
+  --popover-foreground: hsl(var(--slate-100));
+  --primary: hsl(var(--ocean-primary-dark));
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(var(--coral-accent-dark));
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(var(--slate-700));
+  --muted-foreground: hsl(var(--slate-400));
+  --accent: hsl(var(--coral-accent-dark));
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive: hsl(var(--error-dark));
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(var(--slate-600));
+  --input: hsl(var(--slate-600));
+  --ring: hsl(var(--ocean-primary-dark));
+  
+  /* Sidebar - Dark Mode */
+  --sidebar-background: hsl(var(--slate-800));
+  --sidebar: hsl(var(--slate-800));
+  --sidebar-foreground: hsl(var(--slate-100));
+  --sidebar-primary: hsl(var(--ocean-primary-dark));
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(var(--slate-700));
+  --sidebar-accent-foreground: hsl(var(--ocean-primary-dark));
+  --sidebar-border: hsl(var(--slate-600));
+  --sidebar-ring: hsl(var(--ocean-primary-dark));
 }
 
 @layer base {
@@ -80,38 +146,96 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+  
+  p {
+    @apply text-base leading-relaxed;
+  }
 }
 
-.chat-bubble-user {
-  background: linear-gradient(135deg, hsl(200, 98%, 50%), hsl(200, 98%, 45%));
+@layer components {
+  /* Chat Bubbles */
+  .chat-bubble-user {
+    @apply bg-gradient-to-br from-[hsl(var(--ocean-primary))] to-[hsl(var(--ocean-primary)/0.85)] text-white rounded-2xl px-4 py-3 max-w-[80%] shadow-sm;
+  }
+
+  .chat-bubble-ai {
+    @apply bg-white dark:bg-slate-800 border border-sand-200 dark:border-slate-600 text-sand-900 dark:text-slate-100 rounded-2xl px-4 py-3 max-w-[80%] shadow-sm;
+  }
+
+  /* Cards */
+  .card-elevated {
+    @apply bg-white dark:bg-slate-800 rounded-xl border border-sand-200 dark:border-slate-600 shadow-sm hover:shadow-base transition-shadow duration-200;
+  }
+
+  .cost-card {
+    @apply bg-gradient-to-br from-white to-sand-50 dark:from-slate-800 dark:to-slate-700 rounded-xl border border-sand-200 dark:border-slate-600 p-6 shadow-sm;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-[hsl(var(--ocean-primary))] dark:bg-[hsl(var(--ocean-primary-dark))] text-white hover:opacity-90 transition-all duration-200 font-semibold rounded-lg px-6 py-2.5 shadow-sm;
+  }
+
+  .btn-accent {
+    @apply bg-[hsl(var(--coral-accent))] dark:bg-[hsl(var(--coral-accent-dark))] text-white hover:opacity-90 transition-all duration-200 font-semibold rounded-lg px-6 py-2.5 shadow-sm;
+  }
+
+  /* Gradients */
+  .gradient-hero {
+    @apply bg-gradient-to-br from-[hsl(var(--ocean-deep))] via-[hsl(var(--ocean-primary))] to-[hsl(var(--coral-accent))];
+  }
+
+  .gradient-overlay {
+    @apply absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60;
+  }
 }
 
-.chat-bubble-ai {
-  background: hsl(0, 0%, 100%);
-  border: 1px solid hsl(214, 32%, 91%);
+@layer utilities {
+  /* Text Colors */
+  .text-ocean {
+    @apply text-[hsl(var(--ocean-primary))] dark:text-[hsl(var(--ocean-primary-dark))];
+  }
+
+  .text-coral {
+    @apply text-[hsl(var(--coral-accent))] dark:text-[hsl(var(--coral-accent-dark))];
+  }
+
+  /* Background Colors */
+  .bg-ocean {
+    @apply bg-[hsl(var(--ocean-primary))] dark:bg-[hsl(var(--ocean-primary-dark))];
+  }
+
+  .bg-coral {
+    @apply bg-[hsl(var(--coral-accent))] dark:bg-[hsl(var(--coral-accent-dark))];
+  }
+  
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-200 ease-in-out;
+  }
 }
 
-.cost-card {
-  background: linear-gradient(135deg, hsl(0, 0%, 100%), hsl(210, 40%, 99%));
-}
-
-.gradient-bg {
-  background: linear-gradient(135deg, hsl(200, 98%, 50%), hsl(158, 64%, 52%));
-}
-
-.dark .chat-bubble-ai {
-  background: hsl(222, 84%, 4.9%);
-  border: 1px solid hsl(217, 32%, 17%);
-}
-
-.dark .cost-card {
-  background: linear-gradient(135deg, hsl(222, 84%, 4.9%), hsl(217, 32%, 17%));
-}
-
-.animate-bounce {
-  animation: bounce 1s infinite;
-}
-
+/* Animations */
 @keyframes bounce {
   0%, 20%, 53%, 80%, 100% {
     animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
@@ -128,4 +252,8 @@
   90% {
     transform: translate3d(0,-4px,0);
   }
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
 }

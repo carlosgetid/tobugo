@@ -61,6 +61,35 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+        // Custom brand colors
+        ocean: {
+          deep: "hsl(var(--ocean-deep))",
+          primary: "hsl(var(--ocean-primary))",
+        },
+        coral: {
+          DEFAULT: "hsl(var(--coral-accent))",
+        },
+        sand: {
+          50: "hsl(var(--sand-50))",
+          100: "hsl(var(--sand-100))",
+          200: "hsl(var(--sand-200))",
+          300: "hsl(var(--sand-300))",
+          400: "hsl(var(--sand-400))",
+          500: "hsl(var(--sand-500))",
+          600: "hsl(var(--sand-600))",
+          700: "hsl(var(--sand-700))",
+          900: "hsl(var(--sand-900))",
+        },
+        slate: {
+          100: "hsl(var(--slate-100))",
+          300: "hsl(var(--slate-300))",
+          400: "hsl(var(--slate-400))",
+          500: "hsl(var(--slate-500))",
+          600: "hsl(var(--slate-600))",
+          700: "hsl(var(--slate-700))",
+          800: "hsl(var(--slate-800))",
+          900: "hsl(var(--slate-900))",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
