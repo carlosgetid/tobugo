@@ -10,6 +10,9 @@ import Dashboard from "@/pages/dashboard";
 import Chat from "@/pages/chat";
 import Community from "@/pages/community";
 import Itinerarios from "@/pages/itinerarios";
+import PaymentSuccess from "@/pages/payment-success";
+import PaymentFailure from "@/pages/payment-failure";
+import PaymentPending from "@/pages/payment-pending";
 import NotFound from "@/pages/not-found";
 import Navbar from "@/components/navbar";
 import { useEffect } from "react";
@@ -93,6 +96,11 @@ function Router() {
             <Itinerarios />
           </ProtectedRoute>
         )} />
+        
+        {/* Payment confirmation pages - Public to allow Mercado Pago redirects */}
+        <Route path="/payment/success" component={PaymentSuccess} />
+        <Route path="/payment/failure" component={PaymentFailure} />
+        <Route path="/payment/pending" component={PaymentPending} />
         
         <Route component={NotFound} />
       </Switch>

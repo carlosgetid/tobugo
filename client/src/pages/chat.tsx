@@ -13,6 +13,7 @@ export default function Chat() {
   const [match, params] = useRoute("/chat/:id");
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(params?.id || null);
   const [generatedItinerary, setGeneratedItinerary] = useState(null);
+  const [savedTripId, setSavedTripId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<Array<{id: string, role: string, content: string, timestamp: string}>>([]);
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -106,6 +107,7 @@ export default function Chat() {
     },
     onSuccess: (savedTrip) => {
       console.log("Trip saved successfully:", savedTrip.id);
+      setSavedTripId(savedTrip.id); // Save trip ID for checkout
       queryClient.invalidateQueries({ queryKey: ['/api/trips/public'] });
     },
   });
@@ -249,6 +251,7 @@ export default function Chat() {
 
           <ItineraryDisplay 
             itinerary={generatedItinerary}
+            tripId={savedTripId || undefined}
             onModify={(feedback) => {
               optimizeItineraryMutation.mutate(feedback);
             }}

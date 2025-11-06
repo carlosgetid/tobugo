@@ -1,14 +1,19 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import CostSummary from "@/components/cost-summary";
-import { Edit, Download, Calendar, MapPin, Plane, Bed, Utensils, Car, Send } from "lucide-react";
+import CheckoutModal from "@/components/checkout-modal";
+import { Edit, Download, Calendar, MapPin, Plane, Bed, Utensils, Car, Send, Lock } from "lucide-react";
 import { generatePDF } from "@/lib/pdf-generator";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface ItineraryDisplayProps {
   itinerary: any;
+  tripId?: string;
   onModify: (feedback: string) => void;
 }
 
@@ -44,10 +49,19 @@ const getActivityColor = (type: string) => {
   }
 };
 
-export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDisplayProps) {
+export default function ItineraryDisplay({ itinerary, tripId, onModify }: ItineraryDisplayProps) {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   const [modificationText, setModificationText] = useState("");
   const [isModificationDialogOpen, setIsModificationDialogOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Check if user has purchased this trip
+  const { data: purchaseCheck, refetch: refetchPurchaseCheck } = useQuery({
+    queryKey: ["/api/payments/check", tripId],
+    enabled: !!tripId && !!user,
+  });
 
   const toggleDay = (index: number) => {
     const newExpanded = new Set(expandedDays);
@@ -60,11 +74,64 @@ export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDispl
   };
 
   const handleDownloadPDF = async () => {
-    try {
-      await generatePDF(itinerary);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
+    // If no tripId, allow free download (for trips created in current session)
+    if (!tripId) {
+      try {
+        await generatePDF(itinerary);
+        toast({
+          title: "PDF descargado",
+          description: "Tu itinerario se descargó correctamente",
+        });
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({
+          title: "Error al generar PDF",
+          description: "No se pudo generar el archivo",
+          variant: "destructive",
+        });
+      }
+      return;
     }
+
+    // Check if user is logged in
+    if (!user) {
+      toast({
+        title: "Inicia sesión para descargar",
+        description: "Necesitas tener una cuenta para descargar itinerarios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if user has purchased
+    if (purchaseCheck?.hasPurchased) {
+      try {
+        await generatePDF(itinerary);
+        toast({
+          title: "PDF descargado",
+          description: "Tu itinerario se descargó correctamente",
+        });
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({
+          title: "Error al generar PDF",
+          description: "No se pudo generar el archivo",
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Show checkout modal
+      setIsCheckoutOpen(true);
+    }
+  };
+
+  const handlePurchaseComplete = async () => {
+    await refetchPurchaseCheck();
+    await generatePDF(itinerary);
+    toast({
+      title: "¡Compra exitosa!",
+      description: "Tu PDF se está descargando ahora",
+    });
   };
 
   const handleSendModification = () => {
@@ -101,11 +168,37 @@ export default function ItineraryDisplay({ itinerary, onModify }: ItineraryDispl
             <Button
               onClick={handleDownloadPDF}
               data-testid="button-download-pdf"
+              variant={purchaseCheck?.hasPurchased || !tripId ? "default" : "outline"}
             >
-              <Download className="h-4 w-4 mr-2" />
-              Descargar PDF
+              {purchaseCheck?.hasPurchased || !tripId ? (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Descargar PDF
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Descargar PDF ($99)
+                </>
+              )}
             </Button>
           </div>
+          
+          {/* Checkout Modal */}
+          {tripId && (
+            <CheckoutModal
+              isOpen={isCheckoutOpen}
+              onClose={() => setIsCheckoutOpen(false)}
+              trip={{
+                id: tripId,
+                title: itinerary.title || `Viaje a ${itinerary.destination || 'destino'}`,
+                destination: itinerary.destination || 'Destino desconocido',
+                totalCost: itinerary.totalCost,
+                days: itinerary.days,
+              }}
+              onPurchaseComplete={handlePurchaseComplete}
+            />
+          )}
         </div>
 
       {/* Itinerary Days */}
