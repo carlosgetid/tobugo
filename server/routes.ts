@@ -197,9 +197,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       messages.push(newMessage);
 
-      // Process with Gemini AI
+      // Get accumulated preferences from previous interactions
+      const currentPreferences = session.extractedPreferences || {};
+
+      // Process with Gemini AI, passing accumulated preferences as context
       const aiResponse = await processConversation(
-        messages.map(m => ({ role: m.role, content: m.content }))
+        messages.map(m => ({ role: m.role, content: m.content })),
+        { preferences: currentPreferences }
       );
 
       console.log("AI Response:", JSON.stringify(aiResponse, null, 2));
@@ -213,17 +217,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       messages.push(aiMessage);
 
+      // Merge new preferences with existing ones (accumulate)
+      const newPreferences = aiResponse.extractedPreferences ?? {};
+      const mergedPreferences = {
+        ...currentPreferences,
+        ...newPreferences
+      };
+
       const updatedSession = await storage.updateChatSession(sessionId, {
         messages,
+        extractedPreferences: mergedPreferences,
         status: aiResponse.shouldGenerateItinerary ? 'completed' : 'active'
       });
 
-      console.log("Extracted preferences:", JSON.stringify(aiResponse.extractedPreferences, null, 2));
+      console.log("Extracted preferences (new):", JSON.stringify(newPreferences, null, 2));
+      console.log("Merged preferences (total):", JSON.stringify(mergedPreferences, null, 2));
 
       res.json({
         session: updatedSession,
         shouldGenerateItinerary: aiResponse.shouldGenerateItinerary,
-        extractedPreferences: aiResponse.extractedPreferences
+        extractedPreferences: mergedPreferences
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to process message", error });

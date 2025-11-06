@@ -110,6 +110,16 @@ export const chatSessions = pgTable("chat_sessions", {
     content: string;
     timestamp: string;
   }>>().default([]),
+  extractedPreferences: jsonb("extracted_preferences").$type<{
+    destination?: string;
+    startDate?: string;
+    endDate?: string;
+    budget?: string | number;
+    travelers?: number;
+    activities?: string[];
+    travelStyle?: string;
+    accommodationType?: string;
+  }>().default({}),
   status: text("status").default('active'), // active, completed, cancelled
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

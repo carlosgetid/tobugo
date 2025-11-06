@@ -8,7 +8,7 @@ export interface TravelPreferences {
   destination: string;
   startDate: string;
   endDate: string;
-  budget?: number;
+  budget?: number | string;
   travelers?: number;
   accommodationType?: string;
   activities?: string[];
@@ -255,9 +255,13 @@ export async function processConversation(
   context?: { preferences?: Partial<TravelPreferences> }
 ): Promise<{ response: string; extractedPreferences?: Partial<TravelPreferences>; shouldGenerateItinerary?: boolean }> {
   
+  const currentPreferences = context?.preferences || {};
+  
   const systemPrompt = `You are a friendly travel planning assistant. Your goal is to gather travel preferences in two steps.
 
-Current conversation context: ${JSON.stringify(context || {})}
+ALREADY COLLECTED PREFERENCES: ${JSON.stringify(currentPreferences)}
+
+IMPORTANT: You already have the preferences listed above. DO NOT ask for information you already have. Only ask for missing information.
 
 BEHAVIOR:
 STEP 1: If this is the first interaction, present the first 4 questions in lista/punteo format:
@@ -280,7 +284,9 @@ STEP 3: Once you have all 5 pieces of information, suggest generating the itiner
 
 Guidelines:
 - Always be friendly and conversational in Spanish
-- Extract all information provided by the user
+- REMEMBER: Check ALREADY COLLECTED PREFERENCES first before asking
+- DO NOT ask for information you already have - acknowledge it instead!
+- Extract all NEW information provided by the user
 - Convert date mentions to YYYY-MM-DD format when possible
 - If user gives duration without specific dates, it's fine - the system handles this
 - Only move to STEP 2 after getting answers to the first 4 questions
@@ -288,7 +294,7 @@ Guidelines:
 
 Respond with JSON containing:
 {
-  "response": "your conversational response following the question sequence",
+  "response": "your conversational response following the question sequence. ACKNOWLEDGE information already collected!",
   "extractedPreferences": {
     "destination": "string (city/country name)",
     "startDate": "YYYY-MM-DD format", 
@@ -296,12 +302,13 @@ Respond with JSON containing:
     "budget": "number (in USD) or string like '$1500'",
     "travelers": "number of people",
     "activities": "array of activity strings",
-    "travelStyle": "string description"
+    "travelStyle": "string description",
+    "accommodationType": "hotel preference"
   },
   "shouldGenerateItinerary": boolean
 }
 
-IMPORTANT: Only include extractedPreferences fields that were mentioned. Set shouldGenerateItinerary=true only after collecting all 5 pieces of information.`;
+IMPORTANT: Only include extractedPreferences fields that were NEWLY mentioned in this message. Set shouldGenerateItinerary=true only after collecting all 5 pieces of information (destination, dates, budget, travelers, travelStyle).`;
 
   try {
     const conversationHistory = messages.map(msg => 
